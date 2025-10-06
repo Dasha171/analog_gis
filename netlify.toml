@@ -1,9 +1,9 @@
 [build]
   publish = "build/web"
-  command = "flutter build web --release --no-tree-shake-icons"
+  command = "chmod +x build.sh && ./build.sh"
 
 [build.environment]
-  FLUTTER_VERSION = "stable"
+  NODE_VERSION = "18"
 
 [[redirects]]
   from = "/*"

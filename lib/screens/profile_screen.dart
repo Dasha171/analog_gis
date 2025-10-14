@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/localization_provider.dart';
+import '../providers/auth_provider.dart';
+import 'login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -8,94 +9,213 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF212121),
       appBar: AppBar(
-        title: const Text('Профиль'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        title: const Text(
+          'Профиль',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      body: SingleChildScrollView(
+      body: Consumer<AuthProvider>(
+        builder: (context, authProvider, child) {
+          if (!authProvider.isAuthenticated) {
+            return _buildUnauthenticatedView(context);
+          }
+
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                // Профиль пользователя
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF151515),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      // Аватар
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0C79FE).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        child: authProvider.currentUser?.profileImageUrl != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(50),
+                                child: Image.network(
+                                  authProvider.currentUser!.profileImageUrl!,
+                                  width: 100,
+                                  height: 100,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(
+                                      Icons.person,
+                                      size: 50,
+                                      color: Color(0xFF0C79FE),
+                                    );
+                                  },
+                                ),
+                              )
+                            : const Icon(
+                                Icons.person,
+                                size: 50,
+                                color: Color(0xFF0C79FE),
+                              ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Имя пользователя
+                      Text(
+                        authProvider.currentUser?.fullName ?? 'Пользователь',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      
+                      // Email
+                      Text(
+                        authProvider.currentUser?.email ?? '',
+                        style: const TextStyle(
+                          color: Color(0xFF6C6C6C),
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Кнопка редактирования
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          // TODO: Редактировать профиль
+                        },
+                        icon: const Icon(Icons.edit, color: Color(0xFF0C79FE)),
+                        label: const Text(
+                          'Редактировать профиль',
+                          style: TextStyle(color: Color(0xFF0C79FE)),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF0C79FE)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Настройки
+                _buildSettingsSection(context),
+                
+                const SizedBox(height: 24),
+                
+                // Дополнительные функции
+                _buildAdditionalSection(context),
+                
+                const SizedBox(height: 100), // Отступ для нижнего меню
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildUnauthenticatedView(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Профиль пользователя
+            // Иконка
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                color: const Color(0xFF0C79FE).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(60),
               ),
-              child: Column(
-                children: [
-                  // Аватар
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.blue[100],
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    child: Icon(
-                      Icons.person,
-                      size: 50,
-                      color: Colors.blue[600],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Имя пользователя
-                  const Text(
-                    'Пользователь',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  
-                  // Email
-                  Text(
-                    'user@example.com',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Кнопка редактирования
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      // TODO: Редактировать профиль
-                    },
-                    icon: const Icon(Icons.edit),
-                    label: const Text('Редактировать профиль'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.blue,
-                      side: BorderSide(color: Colors.blue!),
-                    ),
-                  ),
-                ],
+              child: const Icon(
+                Icons.person_outline,
+                color: Color(0xFF0C79FE),
+                size: 60,
               ),
             ),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             
-            // Настройки
-            _buildSettingsSection(context),
+            // Заголовок
+            const Text(
+              'Войдите в аккаунт',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             
-            // Дополнительные функции
-            _buildAdditionalSection(context),
+            // Описание
+            const Text(
+              'Войдите в свой аккаунт, чтобы получить доступ ко всем функциям приложения',
+              style: TextStyle(
+                color: Color(0xFF6C6C6C),
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
             
-            const SizedBox(height: 100), // Отступ для нижнего меню
+            const SizedBox(height: 48),
+            
+            // Кнопка входа
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const LoginScreen(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0C79FE),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                'Войти',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -106,15 +226,8 @@ class ProfileScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF151515),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,6 +237,7 @@ class ProfileScreen extends StatelessWidget {
             child: Text(
               'Настройки',
               style: TextStyle(
+                color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -135,7 +249,7 @@ class ProfileScreen extends StatelessWidget {
             title: 'Язык',
             subtitle: 'Русский',
             onTap: () {
-              context.read<LocalizationProvider>().toggleLanguage();
+              // TODO: Настройки языка
             },
           ),
           
@@ -174,15 +288,8 @@ class ProfileScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF151515),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,6 +299,7 @@ class ProfileScreen extends StatelessWidget {
             child: Text(
               'Дополнительно',
               style: TextStyle(
+                color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -245,7 +353,7 @@ class ProfileScreen extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: textColor ?? Colors.grey[600],
+              color: textColor ?? const Color(0xFF6C6C6C),
               size: 24,
             ),
             const SizedBox(width: 16),
@@ -256,25 +364,25 @@ class ProfileScreen extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
+                      color: textColor ?? Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: textColor,
                     ),
                   ),
                   Text(
                     subtitle,
-                    style: TextStyle(
+                    style: const TextStyle(
+                      color: Color(0xFF6C6C6C),
                       fontSize: 14,
-                      color: Colors.grey[600],
                     ),
                   ),
                 ],
               ),
             ),
-            Icon(
+            const Icon(
               Icons.arrow_forward_ios,
               size: 16,
-              color: Colors.grey[400],
+              color: Color(0xFF6C6C6C),
             ),
           ],
         ),
@@ -314,17 +422,29 @@ class ProfileScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Выйти'),
-        content: const Text('Вы действительно хотите выйти из приложения?'),
+        backgroundColor: const Color(0xFF212121),
+        title: const Text(
+          'Выйти',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Вы действительно хотите выйти из аккаунта?',
+          style: TextStyle(color: Color(0xFF6C6C6C)),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
+            child: const Text(
+              'Отмена',
+              style: TextStyle(color: Color(0xFF6C6C6C)),
+            ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // TODO: Выход из приложения
+              final authProvider = context.read<AuthProvider>();
+              await authProvider.signOut();
+              Navigator.pop(context); // Возвращаемся на главный экран
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,

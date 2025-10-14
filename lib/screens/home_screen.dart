@@ -4,11 +4,17 @@ import 'package:latlong2/latlong.dart' as latlng;
 import 'package:provider/provider.dart';
 import '../providers/map_provider.dart';
 import '../providers/search_provider.dart';
+import '../providers/map_layers_provider.dart';
+import '../providers/route_provider.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/map_controls_widget.dart';
 import '../widgets/search_results_widget.dart';
+import '../widgets/map_layers_widget.dart';
+import '../widgets/route_widget.dart';
 import 'profile_screen.dart';
 import 'offline_maps_screen.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchController.addListener(_onSearchChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MapProvider>().setMapController(_mapController);
+      context.read<MapLayersProvider>().initializeLayers();
     });
   }
   
@@ -138,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.white,
                 ),
                 onPressed: () {
-                  // TODO: Implement map style toggle for OpenStreetMap
+                  showMapLayersModal(context);
                 },
               ),
             ),
@@ -153,41 +160,45 @@ class _HomeScreenState extends State<HomeScreen> {
           
           // Плавающие кнопки действий (над поисковой строкой)
           AnimatedPositioned(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOutCubic,
             bottom: _isBottomSheetExpanded 
                 ? MediaQuery.of(context).size.height * 0.7 + 10 
                 : 135,
             left: 16,
             right: 16,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Две кнопки слева
-                Row(
+            child: Consumer<RouteProvider>(
+              builder: (context, routeProvider, child) {
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildFloatingButton(Icons.bookmark_border, false),
-                    const SizedBox(width: 12),
-                    _buildFloatingButton(Icons.directions, false),
+                    // Две кнопки слева
+                    Row(
+                      children: [
+                        _buildFloatingButton(Icons.bookmark_border, false),
+                        const SizedBox(width: 12),
+                        _buildFloatingButton(Icons.directions, false, onTap: () {
+                          context.read<RouteProvider>().setRouteMode(true);
+                        }),
+                        // Кнопка поиска (показывается только в режиме маршрутизации)
+                        if (routeProvider.isRouteMode) ...[
+                          const SizedBox(width: 12),
+                          _buildFloatingButton(Icons.search, false, onTap: () {
+                            context.read<RouteProvider>().setRouteMode(false);
+                          }),
+                        ],
+                      ],
+                    ),
+                    // Одна кнопка справа
+                    _buildFloatingButton(Icons.my_location, true, onTap: () {
+                      context.read<MapProvider>().getCurrentLocation();
+                    }),
                   ],
-                ),
-                // Одна кнопка справа
-                _buildFloatingButton(Icons.my_location, true, onTap: () {
-                  context.read<MapProvider>().getCurrentLocation();
-                }),
-              ],
+                );
+              },
             ),
           ),
           
-          // Результаты поиска
-          if (_showSearchResults)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 70,
-              left: 16,
-              right: 16,
-              bottom: 180, // Увеличен отступ снизу
-              child: const SearchResultsWidget(),
-            ),
           
         ],
       ),
@@ -228,212 +239,338 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         }
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        height: _isBottomSheetExpanded 
-            ? MediaQuery.of(context).size.height * 0.7 
-            : MediaQuery.of(context).size.height * 0.15,
-        decoration: const BoxDecoration(
-          color: Color(0xFF212121),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Полоска-ручка сверху
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _isBottomSheetExpanded = !_isBottomSheetExpanded;
-                  });
-                },
-                child: Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFBEBFC0),
-                    borderRadius: BorderRadius.circular(2),
+       child: AnimatedContainer(
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOutCubic,
+            height: _isBottomSheetExpanded 
+                ? MediaQuery.of(context).size.height * 0.7 
+                : MediaQuery.of(context).size.height * 0.15,
+            decoration: const BoxDecoration(
+              color: Color(0xFF212121),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: Column(
+              children: [
+                // Полоска-ручка сверху
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isBottomSheetExpanded = !_isBottomSheetExpanded;
+                    });
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFBEBFC0),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              
-              // Блок поиска и кнопка меню
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    // Блок поиска
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isBottomSheetExpanded = true;
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF151515),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.search,
-                                color: const Color(0xFF6C6C6C),
-                                size: 20,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'Search Maps',
-                                  style: TextStyle(
-                                    color: const Color(0xFF6C6C6C),
-                                    fontSize: 16,
+                
+                // Блок поиска и кнопка меню (или компактная версия маршрута)
+                Consumer<RouteProvider>(
+                  builder: (context, routeProvider, child) {
+                    // Если режим маршрутизации и bottom sheet свернут - показываем компактную версию
+                    if (routeProvider.isRouteMode && !_isBottomSheetExpanded) {
+                      return Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            // Поле "Куда?"
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _isBottomSheetExpanded = true;
+                                  });
+                                },
+                                child: Container(
+                                  height: 48,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF151515),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.location_on,
+                                        color: const Color(0xFF6C6C6C),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          routeProvider.toLocation.isEmpty ? 'Куда?' : routeProvider.toLocation,
+                                          style: TextStyle(
+                                            color: routeProvider.toLocation.isEmpty ? const Color(0xFF6C6C6C) : Colors.white,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
-                              Icon(
-                                Icons.mic,
-                                color: const Color(0xFF6C6C6C),
+                            ),
+                            
+                            const SizedBox(width: 12),
+                            
+                            // Кнопка меню
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF151515),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.menu,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  _showBottomSheetMenu(context);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    
+                    // Если режим маршрутизации и bottom sheet развернут - скрываем поиск
+                    if (routeProvider.isRouteMode) {
+                      return const SizedBox.shrink();
+                    }
+                    
+                    // Обычный режим поиска
+                    return Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          // Блок поиска
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isBottomSheetExpanded = true;
+                                });
+                              },
+                              child: Container(
+                                height: 48,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF151515),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.search,
+                                      color: const Color(0xFF6C6C6C),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _searchController,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                        decoration: const InputDecoration(
+                                          hintText: 'Поиск мест и адресов',
+                                          hintStyle: TextStyle(
+                                            color: Color(0xFF6C6C6C),
+                                            fontSize: 16,
+                                          ),
+                                          border: InputBorder.none,
+                                          contentPadding: EdgeInsets.zero,
+                                        ),
+                                        onTap: () {
+                                          setState(() {
+                                            _isBottomSheetExpanded = true;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                    if (_searchController.text.isNotEmpty)
+                                      GestureDetector(
+                                        onTap: () {
+                                          _searchController.clear();
+                                          setState(() {
+                                            _showSearchResults = false;
+                                          });
+                                        },
+                                        child: Icon(
+                                          Icons.clear,
+                                          color: const Color(0xFF6C6C6C),
+                                          size: 20,
+                                        ),
+                                      )
+                                    else
+                                      Icon(
+                                        Icons.mic,
+                                        color: const Color(0xFF6C6C6C),
+                                        size: 20,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          
+                          const SizedBox(width: 12),
+                          
+                          // Кнопка меню
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF151515),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.menu,
+                                color: Colors.white,
                                 size: 20,
                               ),
-                            ],
+                              onPressed: () {
+                                _showBottomSheetMenu(context);
+                              },
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ),
-                    
-                    const SizedBox(width: 12),
-                    
-                    // Кнопка меню
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF151515),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.menu,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        onPressed: () {
-                          _showBottomSheetMenu(context);
-                        },
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              ),
-              
-              // Контент при раскрытии
-              if (_isBottomSheetExpanded) _buildExpandedContent(),
-            ],
+                
+                // Контент при раскрытии
+                if (_isBottomSheetExpanded) _buildExpandedContent(),
+              ],
+            ),
           ),
-        ),
-      ),
     );
   }
   
   Widget _buildExpandedContent() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Быстрые кнопки - Дом, Работа, Добавить
-          Row(
-            children: [
-              Expanded(
-                flex: 5,
-                child: _buildQuickButton(Icons.home, 'Дом'),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 5,
-                child: _buildQuickButton(Icons.work, 'Работа'),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 6,
-                child: _buildQuickButton(Icons.add, 'Добавить'),
-              ),
-            ],
-          ),
+    return Expanded(
+      child: Consumer2<SearchProvider, RouteProvider>(
+        builder: (context, searchProvider, routeProvider, child) {
+          // Если режим маршрутизации включен
+          if (routeProvider.isRouteMode) {
+            return RouteWidget(
+              onMenuTap: () => _showBottomSheetMenu(context),
+            );
+          }
           
-          const SizedBox(height: 16),
+          // Если есть результаты поиска, показываем их вместо кнопок
+          if (searchProvider.searchResults.isNotEmpty) {
+            return SearchResultsWidget();
+          }
           
-          // Быстрые действия
-          const Text(
-            'Быстрые действия',
-            style: TextStyle(
-              color: Color(0xFFC4C4C4),
-              fontSize: 12,
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                // Быстрые кнопки - Дом, Работа, Добавить
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: _buildQuickButton(Icons.home, 'Дом'),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 5,
+                      child: _buildQuickButton(Icons.work, 'Работа'),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 6,
+                      child: _buildQuickButton(Icons.add, 'Добавить'),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Быстрые действия
+                const Text(
+                  'Быстрые действия',
+                  style: TextStyle(
+                    color: Color(0xFFC4C4C4),
+                    fontSize: 12,
+                  ),
+                ),
+                
+                const SizedBox(height: 12),
+                
+                // Категории - 2 в ряд
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildCategoryButton(Icons.restaurant, 'Кафе'),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: _buildCategoryButton(Icons.shopping_cart, 'Магазины'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildCategoryButton(Icons.local_hospital, 'Медицина'),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: _buildCategoryButton(Icons.account_balance, 'Банки'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildCategoryButton(Icons.celebration, 'Развлечения'),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: _buildCategoryButton(Icons.movie, 'Кино'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildCategoryButton(Icons.local_gas_station, 'АЗС'),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: _buildCategoryButton(Icons.hotel, 'Отель'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ],
+              ),
             ),
-          ),
-          
-          const SizedBox(height: 12),
-          
-          // Категории - 2 в ряд
-          Row(
-            children: [
-              Expanded(
-                child: _buildCategoryButton(Icons.restaurant, 'Кафе'),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildCategoryButton(Icons.shopping_cart, 'Магазины'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Expanded(
-                child: _buildCategoryButton(Icons.local_hospital, 'Медицина'),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildCategoryButton(Icons.account_balance, 'Банки'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Expanded(
-                child: _buildCategoryButton(Icons.celebration, 'Развлечения'),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildCategoryButton(Icons.movie, 'Кино'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Expanded(
-                child: _buildCategoryButton(Icons.local_gas_station, 'АЗС'),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildCategoryButton(Icons.hotel, 'Отель'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-        ],
+          );
+        },
       ),
     );
   }
@@ -497,6 +634,10 @@ extension _HomeScreenStateMenu on _HomeScreenState {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      transitionAnimationController: AnimationController(
+        vsync: Navigator.of(context),
+        duration: const Duration(milliseconds: 400),
+      ),
       builder: (BuildContext context) {
         return Container(
           height: MediaQuery.of(context).size.height * 0.6,
@@ -520,39 +661,60 @@ extension _HomeScreenStateMenu on _HomeScreenState {
                 ),
               ),
               
-              // Заголовок с профилем и кнопкой закрытия
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Пушкин Пушкин',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                    ),
-                  ],
-                ),
-              ),
+               // Заголовок с профилем и кнопкой закрытия
+               Padding(
+                 padding: const EdgeInsets.all(20),
+                 child: Consumer<AuthProvider>(
+                   builder: (context, authProvider, child) {
+                     return Row(
+                       children: [
+                         GestureDetector(
+                           onTap: () {
+                             Navigator.pop(context);
+                             Navigator.push(
+                               context,
+                               MaterialPageRoute(
+                                 builder: (context) => const ProfileScreen(),
+                               ),
+                             );
+                           },
+                           child: Row(
+                             children: [
+                               Icon(
+                                 Icons.person,
+                                 color: Colors.white,
+                                 size: 24,
+                               ),
+                               const SizedBox(width: 12),
+                               Text(
+                                 authProvider.isAuthenticated 
+                                     ? (authProvider.currentUser?.fullName ?? 'Профиль')
+                                     : 'Профиль',
+                                 style: TextStyle(
+                                   color: Colors.white,
+                                   fontSize: 18,
+                                   fontWeight: FontWeight.w500,
+                                 ),
+                               ),
+                             ],
+                           ),
+                         ),
+                         const Spacer(),
+                         IconButton(
+                           icon: Icon(
+                             Icons.close,
+                             color: Colors.white,
+                             size: 24,
+                           ),
+                           onPressed: () {
+                             Navigator.pop(context);
+                           },
+                         ),
+                       ],
+                     );
+                   },
+                 ),
+               ),
               
               // Список пунктов меню
               Expanded(
@@ -620,3 +782,4 @@ extension _HomeScreenStateMenu on _HomeScreenState {
     );
   }
 }
+

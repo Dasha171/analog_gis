@@ -4,105 +4,86 @@ class SearchResult {
   final String id;
   final String name;
   final String address;
-  final String type;
-  final double? rating;
-  final bool isOpen;
-  final String? distance;
-  final latlng.LatLng? position;
+  final String category;
+  final latlng.LatLng position;
+  final double rating;
+  final int reviewCount;
   final String? phone;
   final String? website;
   final String? description;
-  final String? openingHours;
-  final String? logoUrl;
-  
-  const SearchResult({
+  final List<String> images;
+  final Map<String, dynamic> additionalInfo;
+
+  SearchResult({
     required this.id,
     required this.name,
     required this.address,
-    required this.type,
-    this.rating,
-    this.isOpen = true,
-    this.distance,
-    this.position,
+    required this.category,
+    required this.position,
+    this.rating = 0.0,
+    this.reviewCount = 0,
     this.phone,
     this.website,
     this.description,
-    this.openingHours,
-    this.logoUrl,
+    this.images = const [],
+    this.additionalInfo = const {},
   });
-  
+
   factory SearchResult.fromJson(Map<String, dynamic> json) {
     return SearchResult(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       address: json['address'] ?? '',
-      type: json['type'] ?? '',
-      rating: json['rating']?.toDouble(),
-      isOpen: json['is_open'] ?? true,
-      distance: json['distance'],
-      position: json['latitude'] != null && json['longitude'] != null
-          ? latlng.LatLng(
-              json['latitude']?.toDouble() ?? 0.0,
-              json['longitude']?.toDouble() ?? 0.0,
-            )
-          : null,
+      category: json['category'] ?? '',
+      position: latlng.LatLng(
+        json['latitude'] ?? 0.0,
+        json['longitude'] ?? 0.0,
+      ),
+      rating: (json['rating'] ?? 0.0).toDouble(),
+      reviewCount: json['reviewCount'] ?? 0,
       phone: json['phone'],
       website: json['website'],
       description: json['description'],
-      openingHours: json['opening_hours'],
-      logoUrl: json['logo_url'],
+      images: List<String>.from(json['images'] ?? []),
+      additionalInfo: Map<String, dynamic>.from(json['additionalInfo'] ?? {}),
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,
       'address': address,
-      'type': type,
+      'category': category,
+      'latitude': position.latitude,
+      'longitude': position.longitude,
       'rating': rating,
-      'is_open': isOpen,
-      'distance': distance,
-      'latitude': position?.latitude,
-      'longitude': position?.longitude,
+      'reviewCount': reviewCount,
       'phone': phone,
       'website': website,
       'description': description,
-      'opening_hours': openingHours,
-      'logo_url': logoUrl,
+      'images': images,
+      'additionalInfo': additionalInfo,
     };
   }
-  
-  SearchResult copyWith({
-    String? id,
-    String? name,
-    String? address,
-    String? type,
-    double? rating,
-    bool? isOpen,
-    String? distance,
-    latlng.LatLng? position,
-    String? phone,
-    String? website,
-    String? description,
-    String? openingHours,
-    String? logoUrl,
-  }) {
-    return SearchResult(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      address: address ?? this.address,
-      type: type ?? this.type,
-      rating: rating ?? this.rating,
-      isOpen: isOpen ?? this.isOpen,
-      distance: distance ?? this.distance,
-      position: position ?? this.position,
-      phone: phone ?? this.phone,
-      website: website ?? this.website,
-      description: description ?? this.description,
-      openingHours: openingHours ?? this.openingHours,
-      logoUrl: logoUrl ?? this.logoUrl,
-    );
+
+  // Calculate distance from current location (simplified)
+  double calculateDistance(latlng.LatLng from) {
+    final distance = latlng.Distance();
+    return distance.as(latlng.LengthUnit.Kilometer, from, position);
+  }
+
+  String getDistanceText(latlng.LatLng from) {
+    final distance = calculateDistance(from);
+    if (distance < 1) {
+      return '${(distance * 1000).round()} м';
+    } else {
+      return '${distance.toStringAsFixed(1)} км';
+    }
+  }
+
+  String getRatingText() {
+    if (rating == 0.0) return 'Нет оценок';
+    return '$rating (${reviewCount} отзывов)';
   }
 }
-

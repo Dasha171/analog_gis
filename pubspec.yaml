@@ -65,6 +65,15 @@ dependencies:
   
   # Изображения и ассеты
   cached_network_image: ^3.3.0
+  
+  # Аутентификация
+  google_sign_in: ^6.2.1
+  firebase_auth: ^4.17.8
+  firebase_core: ^2.27.0
+  crypto: ^3.0.3
+  
+  # Email отправка
+  mailer: ^6.0.1
 
 dev_dependencies:
   flutter_test:

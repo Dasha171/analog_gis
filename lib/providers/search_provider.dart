@@ -1,159 +1,199 @@
 import 'package:flutter/material.dart';
-import '../models/poi_model.dart';
+import 'package:latlong2/latlong.dart' as latlng;
 import '../models/search_result_model.dart';
 
 class SearchProvider extends ChangeNotifier {
-  String _query = '';
-  List<SearchResult> _results = [];
-  List<String> _suggestions = [];
+  List<SearchResult> _searchResults = [];
   bool _isSearching = false;
-  String _selectedCategory = 'all';
-  
+  String _currentQuery = '';
+  List<SearchResult> _selectedResults = [];
+
   // Getters
-  String get query => _query;
-  List<SearchResult> get results => _results;
-  List<String> get suggestions => _suggestions;
+  List<SearchResult> get searchResults => _searchResults;
   bool get isSearching => _isSearching;
-  String get selectedCategory => _selectedCategory;
-  
-  // Предопределенные категории
-  final List<String> _categories = [
-    'all',
-    'restaurant',
-    'pharmacy',
-    'shopping',
-    'gas_station',
-    'bank',
-    'hospital',
-    'hotel',
-    'entertainment',
+  String get currentQuery => _currentQuery;
+  List<SearchResult> get selectedResults => _selectedResults;
+
+  // Mock data for testing
+  final List<SearchResult> _mockData = [
+    SearchResult(
+      id: '1',
+      name: 'Starbucks',
+      address: 'Каныша Сатпаева ул., 15',
+      category: 'Кафе',
+      position: latlng.LatLng(43.238949, 76.889709),
+      rating: 4.5,
+      reviewCount: 127,
+      phone: '+7 (727) 123-45-67',
+      description: 'Кофейня Starbucks в центре Алматы',
+    ),
+    SearchResult(
+      id: '2',
+      name: 'Starbucks',
+      address: 'Тауелсиздик ул., 1',
+      category: 'Кафе',
+      position: latlng.LatLng(43.240000, 76.890000),
+      rating: 4.3,
+      reviewCount: 89,
+      phone: '+7 (727) 234-56-78',
+      description: 'Кофейня Starbucks на Тауелсиздик',
+    ),
+    SearchResult(
+      id: '3',
+      name: 'McDonald\'s',
+      address: 'Абая ул., 150',
+      category: 'Ресторан',
+      position: latlng.LatLng(43.235000, 76.885000),
+      rating: 4.1,
+      reviewCount: 203,
+      phone: '+7 (727) 345-67-89',
+      description: 'Ресторан быстрого питания McDonald\'s',
+    ),
+    SearchResult(
+      id: '4',
+      name: 'KFC',
+      address: 'Достык ул., 85',
+      category: 'Ресторан',
+      position: latlng.LatLng(43.242000, 76.892000),
+      rating: 4.0,
+      reviewCount: 156,
+      phone: '+7 (727) 456-78-90',
+      description: 'Ресторан быстрого питания KFC',
+    ),
+    SearchResult(
+      id: '5',
+      name: 'Magnum Cash & Carry',
+      address: 'Розыбакиева ул., 247',
+      category: 'Магазин',
+      position: latlng.LatLng(43.230000, 76.880000),
+      rating: 4.2,
+      reviewCount: 78,
+      phone: '+7 (727) 567-89-01',
+      description: 'Гипермаркет Magnum Cash & Carry',
+    ),
+    SearchResult(
+      id: '6',
+      name: 'Ramstore',
+      address: 'Сейфуллина ул., 597',
+      category: 'Магазин',
+      position: latlng.LatLng(43.245000, 76.895000),
+      rating: 4.4,
+      reviewCount: 134,
+      phone: '+7 (727) 678-90-12',
+      description: 'Торговый центр Ramstore',
+    ),
+    SearchResult(
+      id: '7',
+      name: 'Аптека Асыл',
+      address: 'Абая ул., 120',
+      category: 'Аптека',
+      position: latlng.LatLng(43.232000, 76.882000),
+      rating: 4.6,
+      reviewCount: 45,
+      phone: '+7 (727) 789-01-23',
+      description: 'Аптека Асыл - лекарства и медицинские товары',
+    ),
+    SearchResult(
+      id: '8',
+      name: 'Денсаулык',
+      address: 'Достык ул., 95',
+      category: 'Аптека',
+      position: latlng.LatLng(43.248000, 76.898000),
+      rating: 4.3,
+      reviewCount: 67,
+      phone: '+7 (727) 890-12-34',
+      description: 'Сеть аптек Денсаулык',
+    ),
+    SearchResult(
+      id: '9',
+      name: 'Каспи Банк',
+      address: 'Абая ул., 180',
+      category: 'Банк',
+      position: latlng.LatLng(43.250000, 76.900000),
+      rating: 3.8,
+      reviewCount: 23,
+      phone: '+7 (727) 901-23-45',
+      description: 'Отделение Каспи Банка',
+    ),
+    SearchResult(
+      id: '10',
+      name: 'Народный Банк',
+      address: 'Достык ул., 110',
+      category: 'Банк',
+      position: latlng.LatLng(43.252000, 76.902000),
+      rating: 4.0,
+      reviewCount: 34,
+      phone: '+7 (727) 012-34-56',
+      description: 'Отделение Народного Банка',
+    ),
   ];
-  
-  List<String> get categories => _categories;
-  
-  void setQuery(String query) {
-    _query = query;
-    if (query.length > 2) {
-      _generateSuggestions(query);
-    } else {
-      _suggestions.clear();
-    }
-    notifyListeners();
-  }
-  
-  void _generateSuggestions(String query) {
-    // Примеры автодополнения
-    final allSuggestions = [
-      'Кафе и рестораны',
-      'Аптеки',
-      'Магазины',
-      'Заправки',
-      'Банки',
-      'Больницы',
-      'Отели',
-      'Развлечения',
-      'Парки',
-      'Транспорт',
-    ];
-    
-    _suggestions = allSuggestions
-        .where((suggestion) => 
-            suggestion.toLowerCase().contains(query.toLowerCase()))
-        .toList();
-  }
-  
+
   Future<void> search(String query) async {
     if (query.isEmpty) {
-      _results.clear();
+      _searchResults.clear();
+      _currentQuery = '';
       notifyListeners();
       return;
     }
-    
+
     _isSearching = true;
-    _query = query;
+    _currentQuery = query;
     notifyListeners();
-    
-    try {
-      // Имитация поиска - в реальном приложении здесь будет API запрос
-      await Future.delayed(const Duration(milliseconds: 500));
-      
-      _results = _generateMockResults(query);
-      
-    } catch (e) {
-      print('Search error: $e');
-      _results = [];
-    } finally {
-      _isSearching = false;
+
+    // Simulate API delay
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Filter mock data based on query
+    _searchResults = _mockData.where((result) {
+      final searchText = query.toLowerCase();
+      return result.name.toLowerCase().contains(searchText) ||
+             result.address.toLowerCase().contains(searchText) ||
+             result.category.toLowerCase().contains(searchText) ||
+             result.description?.toLowerCase().contains(searchText) == true;
+    }).toList();
+
+    _isSearching = false;
+    notifyListeners();
+  }
+
+  void selectResult(SearchResult result) {
+    if (!_selectedResults.any((r) => r.id == result.id)) {
+      _selectedResults.add(result);
       notifyListeners();
     }
   }
-  
-  List<SearchResult> _generateMockResults(String query) {
-    // Моковые данные для демонстрации
-    final mockResults = [
-      SearchResult(
-        id: '1',
-        name: 'Ресторан "Тюбетейка"',
-        address: 'ул. Каныша Сатпаева, 22',
-        type: 'restaurant',
-        rating: 4.5,
-        isOpen: true,
-        distance: '0.3 км',
-      ),
-      SearchResult(
-        id: '2',
-        name: 'Манеж',
-        address: 'ул. Каныша Сатпаева, 30',
-        type: 'gym',
-        rating: 4.2,
-        isOpen: true,
-        distance: '0.5 км',
-      ),
-      SearchResult(
-        id: '3',
-        name: 'MegaIce',
-        address: 'ул. Каныша Сатпаева, 15',
-        type: 'shopping',
-        rating: 4.0,
-        isOpen: true,
-        distance: '0.2 км',
-      ),
-      SearchResult(
-        id: '4',
-        name: 'Музей им. А. Кастеева',
-        address: 'ул. Каныша Сатпаева, 22',
-        type: 'museum',
-        rating: 4.7,
-        isOpen: true,
-        distance: '0.4 км',
-      ),
-    ];
-    
-    return mockResults
-        .where((result) => 
-            result.name.toLowerCase().contains(query.toLowerCase()) ||
-            result.address.toLowerCase().contains(query.toLowerCase()))
-        .toList();
-  }
-  
-  void setCategory(String category) {
-    _selectedCategory = category;
-    if (_query.isNotEmpty) {
-      search(_query);
-    }
+
+  void deselectResult(SearchResult result) {
+    _selectedResults.removeWhere((r) => r.id == result.id);
     notifyListeners();
   }
-  
-  void clearSearch() {
-    _query = '';
-    _results.clear();
-    _suggestions.clear();
+
+  void clearResults() {
+    _searchResults.clear();
+    _selectedResults.clear();
+    _currentQuery = '';
     notifyListeners();
   }
-  
-  void selectSuggestion(String suggestion) {
-    _query = suggestion;
-    search(suggestion);
+
+  void clearSelection() {
+    _selectedResults.clear();
+    notifyListeners();
+  }
+
+  // Get results by category
+  List<SearchResult> getResultsByCategory(String category) {
+    return _searchResults.where((result) => result.category == category).toList();
+  }
+
+  // Get nearby results
+  List<SearchResult> getNearbyResults(latlng.LatLng position, {double radiusKm = 5.0}) {
+    return _searchResults.where((result) {
+      final distance = result.calculateDistance(position);
+      return distance <= radiusKm;
+    }).toList()..sort((a, b) {
+      final distanceA = a.calculateDistance(position);
+      final distanceB = b.calculateDistance(position);
+      return distanceA.compareTo(distanceB);
+    });
   }
 }
-

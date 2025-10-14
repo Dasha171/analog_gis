@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
 import 'providers/map_provider.dart';
 import 'providers/search_provider.dart';
+import 'providers/map_layers_provider.dart';
+import 'providers/route_provider.dart';
+import 'providers/auth_provider.dart';
 import 'providers/localization_provider.dart';
 import 'providers/theme_provider.dart';
 
@@ -18,8 +21,11 @@ class AnalGisApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => MapProvider()),
         ChangeNotifierProvider(create: (_) => SearchProvider()),
+        ChangeNotifierProvider(create: (_) => MapLayersProvider()),
+        ChangeNotifierProvider(create: (_) => RouteProvider()),
         ChangeNotifierProvider(create: (_) => LocalizationProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],

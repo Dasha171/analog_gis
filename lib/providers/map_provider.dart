@@ -37,6 +37,8 @@ class MapProvider extends ChangeNotifier {
     _mapController = controller;
     _isLoading = false;
     _isMapLoaded = true;
+    // Clear any existing markers before getting current location
+    _markers.clear();
     // Get current location when map is created
     getCurrentLocation();
     notifyListeners();
@@ -47,10 +49,20 @@ class MapProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print('Location services are disabled');
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
+          print('Location permission denied');
           _isLoading = false;
           notifyListeners();
           return;
@@ -58,19 +70,25 @@ class MapProvider extends ChangeNotifier {
       }
 
       if (permission == LocationPermission.deniedForever) {
+        print('Location permission denied forever');
         _isLoading = false;
         notifyListeners();
         return;
       }
 
+      print('Getting current position...');
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
       );
+
+      print('Position received: ${position.latitude}, ${position.longitude}');
 
       _currentLocation = latlng.LatLng(position.latitude, position.longitude);
       _currentLocationText = 'Широта: ${position.latitude.toStringAsFixed(6)}, Долгота: ${position.longitude.toStringAsFixed(6)}';
 
       if (_mapController != null) {
+        print('Moving map to current location');
         _mapController!.move(_currentLocation!, 15.0);
       }
 
@@ -79,6 +97,12 @@ class MapProvider extends ChangeNotifier {
 
     } catch (e) {
       print('Error getting current location: $e');
+      // Fallback to Almaty if geolocation fails
+      _currentLocation = const latlng.LatLng(43.238949, 76.889709);
+      if (_mapController != null) {
+        _mapController!.move(_currentLocation!, 15.0);
+      }
+      _addCurrentLocationMarker();
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -87,9 +111,15 @@ class MapProvider extends ChangeNotifier {
 
   void _addCurrentLocationMarker() {
     if (_currentLocation != null) {
-      _markers.clear(); // Очищаем старые маркеры
+      // Удаляем все маркеры текущего местоположения
+      _markers.removeWhere((marker) => 
+          marker.key?.toString() == 'current_location' || 
+          marker.key?.toString().contains('current_location') == true);
+      
+      // Добавляем новый маркер текущего местоположения
       _markers.add(
         Marker(
+          key: const ValueKey('current_location'),
           point: _currentLocation!,
           width: 20,
           height: 20,
@@ -206,5 +236,29 @@ class MapProvider extends ChangeNotifier {
     if (_mapController != null) {
       _mapController!.move(_mapController!.camera.center, _mapController!.camera.zoom - 1);
     }
+  }
+
+  // Методы для работы с маркерами поиска
+  void addSearchMarker(Marker marker) {
+    _markers.add(marker);
+    notifyListeners();
+  }
+
+  void removeSearchMarkers() {
+    _markers.removeWhere((marker) => 
+        marker.key?.toString().startsWith('search_') == true);
+    notifyListeners();
+  }
+
+  void clearAllMarkers() {
+    _markers.clear();
+    notifyListeners();
+  }
+
+  void clearSearchMarkers() {
+    _markers.removeWhere((marker) => 
+        marker.key?.toString().startsWith('search_') == true ||
+        marker.key?.toString().contains('search_') == true);
+    notifyListeners();
   }
 }

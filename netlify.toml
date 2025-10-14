@@ -4,6 +4,11 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  FLUTTER_VERSION = "3.16.0"
+
+# Автоматический деплой при push в main
+[build.processing]
+  skip_processing = false
 
 [[redirects]]
   from = "/*"

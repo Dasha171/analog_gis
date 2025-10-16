@@ -9,6 +9,9 @@ import 'providers/route_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/localization_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/settings_provider.dart';
+import 'providers/business_provider.dart';
+import 'providers/user_actions_provider.dart';
 
 void main() {
   runApp(const AnalGisApp());
@@ -28,6 +31,9 @@ class AnalGisApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => RouteProvider()),
         ChangeNotifierProvider(create: (_) => LocalizationProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => BusinessProvider()),
+        ChangeNotifierProvider(create: (_) => UserActionsProvider()),
       ],
       child: Consumer2<LocalizationProvider, ThemeProvider>(
         builder: (context, localizationProvider, themeProvider, child) {
@@ -63,11 +69,40 @@ class AnalGisApp extends StatelessWidget {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
+        iconTheme: IconThemeData(color: Colors.black),
       ),
       colorScheme: ColorScheme.light(
-        primary: const Color(0xFF1976D2),
+        primary: const Color(0xFF0C79FE),
+        secondary: const Color(0xFF0C79FE),
         surface: Colors.white,
         background: Colors.white,
+        onSurface: Colors.black,
+        onBackground: Colors.black,
+      ),
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: Colors.black),
+        bodyMedium: TextStyle(color: Colors.black),
+        bodySmall: TextStyle(color: Colors.black),
+        titleLarge: TextStyle(color: Colors.black),
+        titleMedium: TextStyle(color: Colors.black),
+        titleSmall: TextStyle(color: Colors.black),
+      ),
+      iconTheme: const IconThemeData(color: Colors.black),
+      cardTheme: CardThemeData(
+        color: Colors.white,
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF0C79FE),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
       ),
     );
   }
@@ -81,11 +116,40 @@ class AnalGisApp extends StatelessWidget {
         backgroundColor: Color(0xFF151515),
         foregroundColor: Colors.white,
         elevation: 0,
+        iconTheme: IconThemeData(color: Colors.white),
       ),
       colorScheme: ColorScheme.dark(
-        primary: const Color(0xFF1976D2),
+        primary: const Color(0xFF0C79FE),
+        secondary: const Color(0xFF0C79FE),
         surface: const Color(0xFF151515),
         background: const Color(0xFF151515),
+        onSurface: Colors.white,
+        onBackground: Colors.white,
+      ),
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: Colors.white),
+        bodyMedium: TextStyle(color: Colors.white),
+        bodySmall: TextStyle(color: Colors.white),
+        titleLarge: TextStyle(color: Colors.white),
+        titleMedium: TextStyle(color: Colors.white),
+        titleSmall: TextStyle(color: Colors.white),
+      ),
+      iconTheme: const IconThemeData(color: Colors.white),
+      cardTheme: CardThemeData(
+        color: const Color(0xFF151515),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF0C79FE),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
       ),
     );
   }

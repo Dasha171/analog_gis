@@ -41,6 +41,41 @@
   <!-- Google Maps API -->
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBvOkBw3qy_5Y8SfY7j8k9l0m1n2o3p4q5r6s&libraries=places"></script>
   <link rel="manifest" href="manifest.json">
+  
+  <!-- CSS стили для исправления желтых полос на карте -->
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #000000;
+    }
+    
+    html, body, #app {
+      height: 100%;
+      width: 100%;
+    }
+    
+    /* Убираем желтые полосы с карты */
+    .leaflet-container {
+      background-color: #000000 !important;
+    }
+    
+    .leaflet-tile-container {
+      background-color: transparent !important;
+    }
+    
+    /* Исправляем отображение тайлов карты */
+    .leaflet-tile {
+      border: none !important;
+      outline: none !important;
+    }
+    
+    /* Убираем дефолтные стили Flutter */
+    .flutter-view {
+      background-color: #000000 !important;
+    }
+  </style>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

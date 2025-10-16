@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/map_layers_provider.dart';
+import '../providers/theme_provider.dart';
 import '../models/map_layer_model.dart';
 
 class MapLayersWidget extends StatelessWidget {
@@ -8,11 +9,11 @@ class MapLayersWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<MapLayersProvider>(
-      builder: (context, layersProvider, child) {
+    return Consumer2<MapLayersProvider, ThemeProvider>(
+      builder: (context, layersProvider, themeProvider, child) {
         return Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF212121),
+            color: themeProvider.cardColor,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -23,12 +24,13 @@ class MapLayersWidget extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
                 child: Row(
                   children: [
-                    const Text(
+                    Text(
                       'Слои карты',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: themeProvider.textColor,
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
+                        decoration: TextDecoration.none,
                       ),
                     ),
                     const Spacer(),
@@ -38,12 +40,12 @@ class MapLayersWidget extends StatelessWidget {
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
+                          color: themeProvider.textColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.close,
-                          color: Colors.white,
+                          color: themeProvider.textColor,
                           size: 20,
                         ),
                       ),
@@ -57,7 +59,7 @@ class MapLayersWidget extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: layersProvider.layers.map((layer) {
-                    return _buildLayerItem(context, layersProvider, layer);
+                    return _buildLayerItem(context, layersProvider, layer, themeProvider);
                   }).toList(),
                 ),
               ),
@@ -70,7 +72,7 @@ class MapLayersWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildLayerItem(BuildContext context, MapLayersProvider provider, MapLayer layer) {
+  Widget _buildLayerItem(BuildContext context, MapLayersProvider provider, MapLayer layer, ThemeProvider themeProvider) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       child: Material(
@@ -87,7 +89,7 @@ class MapLayersWidget extends StatelessWidget {
                 // Иконка слоя
                 Icon(
                   provider.getLayerIcon(layer.icon),
-                  color: Colors.white,
+                  color: themeProvider.textColor,
                   size: 24,
                 ),
                 
@@ -97,8 +99,8 @@ class MapLayersWidget extends StatelessWidget {
                 Expanded(
                   child: Text(
                     layer.name,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: themeProvider.textColor,
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
                     ),
@@ -108,7 +110,7 @@ class MapLayersWidget extends StatelessWidget {
                 const SizedBox(width: 16),
                 
                 // Переключатель
-                _buildToggleSwitch(layer.isEnabled),
+                _buildToggleSwitch(layer.isEnabled, themeProvider),
               ],
             ),
           ),
@@ -117,7 +119,7 @@ class MapLayersWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildToggleSwitch(bool isEnabled) {
+  Widget _buildToggleSwitch(bool isEnabled, ThemeProvider themeProvider) {
     return Container(
       width: 24,
       height: 24,
@@ -125,7 +127,7 @@ class MapLayersWidget extends StatelessWidget {
         color: isEnabled ? const Color(0xFF0C79FE) : Colors.transparent,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: isEnabled ? const Color(0xFF0C79FE) : Colors.white.withOpacity(0.3),
+          color: isEnabled ? const Color(0xFF0C79FE) : themeProvider.textColor.withOpacity(0.3),
           width: 2,
         ),
       ),

@@ -7,6 +7,7 @@ import '../providers/search_provider.dart';
 import '../providers/map_layers_provider.dart';
 import '../providers/route_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/map_controls_widget.dart';
 import '../widgets/search_results_widget.dart';
@@ -15,6 +16,9 @@ import '../widgets/route_widget.dart';
 import 'profile_screen.dart';
 import 'offline_maps_screen.dart';
 import 'login_screen.dart';
+import 'settings_screen.dart';
+import '../widgets/business_modal_widget.dart';
+import '../providers/user_actions_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,6 +40,9 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MapProvider>().setMapController(_mapController);
       context.read<MapLayersProvider>().initializeLayers();
+      // Загружаем сессию пользователя при запуске приложения
+      context.read<AuthProvider>().loadUserSession();
+    context.read<UserActionsProvider>().initialize();
     });
   }
   
@@ -62,167 +69,184 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-                  // Карта OpenStreetMap
-                  Consumer<MapProvider>(
-                    builder: (context, mapProvider, child) {
-                      return Stack(
-                        children: [
-                          FlutterMap(
-                            mapController: _mapController,
-                            options: MapOptions(
-                              initialCenter: mapProvider.initialCameraPosition,
-                              initialZoom: 15.0,
-                              onTap: (tapPosition, point) {
-                                setState(() {
-                                  _showSearchResults = false;
-                                  _searchController.clear();
-                                });
-                              },
-                            ),
-                            children: [
-                              TileLayer(
-                                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                userAgentPackageName: 'com.example.anal_gis',
-                                maxZoom: 19,
-                              ),
-                              MarkerLayer(
-                                markers: mapProvider.markers,
-                              ),
-                              PolylineLayer(
-                                polylines: mapProvider.polylines,
-                              ),
-                            ],
-                          ),
-                          // Индикатор загрузки карты
-                          if (mapProvider.isLoading && !mapProvider.isMapLoaded)
-                            Container(
-                              color: Colors.black54,
-                              child: const Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    CircularProgressIndicator(color: Colors.white),
-                                    SizedBox(height: 16),
-                                    Text(
-                                      'Загрузка карты...',
-                                      style: TextStyle(color: Colors.white, fontSize: 16),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-          
-          // Поисковая строка (внизу экрана, до самого низа)
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _buildCustomSearchBar(),
-          ),
-          
-          
-          // Кнопка слоев (слева сверху)
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 10, // Поднято на 50px выше
-            left: 16,
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFF151515),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.layers,
-                  color: Colors.white,
-                ),
-                onPressed: () {
-                  showMapLayersModal(context);
-                },
-              ),
-            ),
-          ),
-          
-          // Кнопки зума (справа, на той же высоте что и кнопка слоев)
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 10, // Поднято на 50px выше
-            right: 16,
-            child: const MapControlsWidget(),
-          ),
-          
-          // Плавающие кнопки действий (над поисковой строкой)
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeInOutCubic,
-            bottom: _isBottomSheetExpanded 
-                ? MediaQuery.of(context).size.height * 0.7 + 10 
-                : 135,
-            left: 16,
-            right: 16,
-            child: Consumer<RouteProvider>(
-              builder: (context, routeProvider, child) {
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Две кнопки слева
-                    Row(
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Scaffold(
+          backgroundColor: themeProvider.backgroundColor,
+          body: Stack(
+            children: [
+              // Карта OpenStreetMap
+              Consumer<MapProvider>(
+                builder: (context, mapProvider, child) {
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(0),
+                    child: FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: mapProvider.initialCameraPosition,
+                        initialZoom: 15.0,
+                        onTap: (tapPosition, point) {
+                          setState(() {
+                            _showSearchResults = false;
+                            _searchController.clear();
+                          });
+                        },
+                        interactionOptions: const InteractionOptions(
+                          flags: InteractiveFlag.all,
+                        ),
+                      ),
                       children: [
-                        _buildFloatingButton(Icons.bookmark_border, false),
-                        const SizedBox(width: 12),
-                        _buildFloatingButton(Icons.directions, false, onTap: () {
-                          context.read<RouteProvider>().setRouteMode(true);
-                        }),
-                        // Кнопка поиска (показывается только в режиме маршрутизации)
-                        if (routeProvider.isRouteMode) ...[
-                          const SizedBox(width: 12),
-                          _buildFloatingButton(Icons.search, false, onTap: () {
-                            context.read<RouteProvider>().setRouteMode(false);
-                          }),
-                        ],
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.example.anal_gis',
+                          maxZoom: 19,
+                          backgroundColor: themeProvider.backgroundColor,
+                        ),
+                        MarkerLayer(
+                          markers: mapProvider.markers,
+                        ),
+                        PolylineLayer(
+                          polylines: mapProvider.polylines,
+                        ),
                       ],
                     ),
-                    // Одна кнопка справа
-                    _buildFloatingButton(Icons.my_location, true, onTap: () {
-                      context.read<MapProvider>().getCurrentLocation();
-                    }),
-                  ],
-                );
-              },
-            ),
+                  );
+                },
+              ),
+              
+              // Индикатор загрузки карты
+              Consumer<MapProvider>(
+                builder: (context, mapProvider, child) {
+                  if (mapProvider.isLoading && !mapProvider.isMapLoaded) {
+                    return Container(
+                      color: Colors.black54,
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(color: Colors.white),
+                            SizedBox(height: 16),
+                            Text(
+                              'Загрузка карты...',
+                              style: TextStyle(color: Colors.white, fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+          
+              // Поисковая строка (внизу экрана, до самого низа)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: _buildCustomSearchBar(),
+              ),
+          
+          
+              // Кнопка слоев (слева сверху)
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 10, // Поднято на 50px выше
+                left: 16,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: themeProvider.surfaceColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.layers,
+                      color: themeProvider.textColor,
+                    ),
+                    onPressed: () {
+                      showMapLayersModal(context);
+                    },
+                  ),
+                ),
+              ),
+          
+              // Кнопки зума (справа, на той же высоте что и кнопка слоев)
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 10, // Поднято на 50px выше
+                right: 16,
+                child: const MapControlsWidget(),
+              ),
+          
+              // Плавающие кнопки действий (над поисковой строкой)
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeInOutCubic,
+                bottom: _isBottomSheetExpanded 
+                    ? MediaQuery.of(context).size.height * 0.7 + 10 
+                    : 135,
+                left: 16,
+                right: 16,
+                child: Consumer<RouteProvider>(
+                  builder: (context, routeProvider, child) {
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Две кнопки слева
+                        Row(
+                          children: [
+                            _buildFloatingButton(Icons.bookmark_border, false),
+                            const SizedBox(width: 12),
+                            _buildFloatingButton(Icons.directions, false, onTap: () {
+                              context.read<RouteProvider>().setRouteMode(true);
+                            }),
+                            // Кнопка поиска (показывается только в режиме маршрутизации)
+                            if (routeProvider.isRouteMode) ...[
+                              const SizedBox(width: 12),
+                              _buildFloatingButton(Icons.search, false, onTap: () {
+                                context.read<RouteProvider>().setRouteMode(false);
+                              }),
+                            ],
+                          ],
+                        ),
+                        // Одна кнопка справа
+                        _buildFloatingButton(Icons.my_location, true, onTap: () {
+                          context.read<MapProvider>().getCurrentLocation();
+                        }),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-          
-          
-        ],
-      ),
+        );
+      },
     );
   }
   
   Widget _buildFloatingButton(IconData icon, bool isBlue, {VoidCallback? onTap}) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: const Color(0xFF212121),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: IconButton(
-        icon: Icon(
-          icon,
-          color: isBlue ? const Color(0xFF0C79FE) : Colors.white,
-          size: 24,
-        ),
-        onPressed: onTap ?? () {
-          // TODO: Add button actions
-        },
-      ),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: themeProvider.surfaceColor,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: IconButton(
+            icon: Icon(
+              icon,
+              color: isBlue ? const Color(0xFF0C79FE) : themeProvider.textColor,
+              size: 24,
+            ),
+            onPressed: onTap ?? () {
+              // TODO: Add button actions
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -245,9 +269,9 @@ class _HomeScreenState extends State<HomeScreen> {
             height: _isBottomSheetExpanded 
                 ? MediaQuery.of(context).size.height * 0.7 
                 : MediaQuery.of(context).size.height * 0.15,
-            decoration: const BoxDecoration(
-              color: Color(0xFF212121),
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: Provider.of<ThemeProvider>(context, listen: false).cardColor,
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(20),
                 topRight: Radius.circular(20),
               ),
@@ -275,6 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Блок поиска и кнопка меню (или компактная версия маршрута)
                 Consumer<RouteProvider>(
                   builder: (context, routeProvider, child) {
+                    final themeProvider = Provider.of<ThemeProvider>(context, listen: true);
                     // Если режим маршрутизации и bottom sheet свернут - показываем компактную версию
                     if (routeProvider.isRouteMode && !_isBottomSheetExpanded) {
                       return Padding(
@@ -293,14 +318,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   height: 48,
                                   padding: const EdgeInsets.symmetric(horizontal: 16),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF151515),
+                                    color: Provider.of<ThemeProvider>(context, listen: false).surfaceColor,
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Row(
                                     children: [
                                       Icon(
                                         Icons.location_on,
-                                        color: const Color(0xFF6C6C6C),
+                                        color: Provider.of<ThemeProvider>(context, listen: false).textSecondaryColor,
                                         size: 20,
                                       ),
                                       const SizedBox(width: 12),
@@ -308,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         child: Text(
                                           routeProvider.toLocation.isEmpty ? 'Куда?' : routeProvider.toLocation,
                                           style: TextStyle(
-                                            color: routeProvider.toLocation.isEmpty ? const Color(0xFF6C6C6C) : Colors.white,
+                                            color: routeProvider.toLocation.isEmpty ? themeProvider.textSecondaryColor : themeProvider.textColor,
                                             fontSize: 16,
                                           ),
                                         ),
@@ -326,13 +351,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               width: 48,
                               height: 48,
                               decoration: BoxDecoration(
-                                color: const Color(0xFF151515),
+                                color: themeProvider.surfaceColor,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: IconButton(
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.menu,
-                                  color: Colors.white,
+                                  color: themeProvider.textColor,
                                   size: 20,
                                 ),
                                 onPressed: () {
@@ -367,28 +392,28 @@ class _HomeScreenState extends State<HomeScreen> {
                                 height: 48,
                                 padding: const EdgeInsets.symmetric(horizontal: 16),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF151515),
+                                  color: Provider.of<ThemeProvider>(context, listen: false).surfaceColor,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Row(
                                   children: [
                                     Icon(
                                       Icons.search,
-                                      color: const Color(0xFF6C6C6C),
+                                      color: Provider.of<ThemeProvider>(context, listen: false).textSecondaryColor,
                                       size: 20,
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: TextField(
                                         controller: _searchController,
-                                        style: const TextStyle(
-                                          color: Colors.white,
+                                        style: TextStyle(
+                                          color: themeProvider.textColor,
                                           fontSize: 16,
                                         ),
-                                        decoration: const InputDecoration(
+                                        decoration: InputDecoration(
                                           hintText: 'Поиск мест и адресов',
                                           hintStyle: TextStyle(
-                                            color: Color(0xFF6C6C6C),
+                                            color: Provider.of<ThemeProvider>(context, listen: false).textSecondaryColor,
                                             fontSize: 16,
                                           ),
                                           border: InputBorder.none,
@@ -411,14 +436,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                         },
                                         child: Icon(
                                           Icons.clear,
-                                          color: const Color(0xFF6C6C6C),
+                                          color: Provider.of<ThemeProvider>(context, listen: false).textSecondaryColor,
                                           size: 20,
                                         ),
                                       )
                                     else
                                       Icon(
                                         Icons.mic,
-                                        color: const Color(0xFF6C6C6C),
+                                        color: Provider.of<ThemeProvider>(context, listen: false).textSecondaryColor,
                                         size: 20,
                                       ),
                                   ],
@@ -434,13 +459,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             width: 48,
                             height: 48,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF151515),
+                              color: themeProvider.surfaceColor,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: IconButton(
                               icon: Icon(
                                 Icons.menu,
-                                color: Colors.white,
+                                color: themeProvider.textColor,
                                 size: 20,
                               ),
                               onPressed: () {
@@ -507,12 +532,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 16),
                 
                 // Быстрые действия
-                const Text(
-                  'Быстрые действия',
-                  style: TextStyle(
-                    color: Color(0xFFC4C4C4),
-                    fontSize: 12,
-                  ),
+                Consumer<ThemeProvider>(
+                  builder: (context, themeProvider, child) {
+                    return Text(
+                      'Быстрые действия',
+                      style: TextStyle(
+                        color: themeProvider.textSecondaryColor,
+                        fontSize: 12,
+                      ),
+                    );
+                  },
                 ),
                 
                 const SizedBox(height: 12),
@@ -576,53 +605,63 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   
   Widget _buildQuickButton(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF151515),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-            ),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: themeProvider.surfaceColor,
+            borderRadius: BorderRadius.circular(10),
           ),
-        ],
-      ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: themeProvider.textColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: themeProvider.textColor,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
   
   Widget _buildCategoryButton(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        image: const DecorationImage(
-          image: AssetImage('assets/images/fonButton.png'),
-          fit: BoxFit.cover,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Colors.white, size: 24),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            image: DecorationImage(
+              image: AssetImage(themeProvider.isDarkMode 
+                ? 'assets/images/fonButton.png' 
+                : 'assets/images/fonButtonWhite.png'),
+              fit: BoxFit.cover,
             ),
           ),
-        ],
-      ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: themeProvider.textColor, size: 24),
+              const SizedBox(width: 12),
+              Text(
+                label,
+                style: TextStyle(
+                  color: themeProvider.textColor,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -630,6 +669,8 @@ class _HomeScreenState extends State<HomeScreen> {
 // Расширение для _HomeScreenState - методы меню
 extension _HomeScreenStateMenu on _HomeScreenState {
   void _showBottomSheetMenu(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -641,9 +682,9 @@ extension _HomeScreenStateMenu on _HomeScreenState {
       builder: (BuildContext context) {
         return Container(
           height: MediaQuery.of(context).size.height * 0.6,
-          decoration: const BoxDecoration(
-            color: Color(0xFF212121),
-            borderRadius: BorderRadius.only(
+          decoration: BoxDecoration(
+            color: themeProvider.cardColor,
+            borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
             ),
@@ -679,31 +720,31 @@ extension _HomeScreenStateMenu on _HomeScreenState {
                              );
                            },
                            child: Row(
-                             children: [
-                               Icon(
-                                 Icons.person,
-                                 color: Colors.white,
-                                 size: 24,
+                           children: [
+                             Icon(
+                               Icons.person,
+                               color: themeProvider.textColor,
+                               size: 24,
+                             ),
+                             const SizedBox(width: 12),
+                             Text(
+                               authProvider.isAuthenticated
+                                   ? (authProvider.currentUser?.fullName ?? 'Профиль')
+                                   : 'Профиль',
+                               style: TextStyle(
+                                 color: themeProvider.textColor,
+                                 fontSize: 18,
+                                 fontWeight: FontWeight.w500,
                                ),
-                               const SizedBox(width: 12),
-                               Text(
-                                 authProvider.isAuthenticated 
-                                     ? (authProvider.currentUser?.fullName ?? 'Профиль')
-                                     : 'Профиль',
-                                 style: TextStyle(
-                                   color: Colors.white,
-                                   fontSize: 18,
-                                   fontWeight: FontWeight.w500,
-                                 ),
-                               ),
-                             ],
+                             ),
+                           ],
                            ),
                          ),
                          const Spacer(),
                          IconButton(
                            icon: Icon(
                              Icons.close,
-                             color: Colors.white,
+                             color: themeProvider.textColor,
                              size: 24,
                            ),
                            onPressed: () {
@@ -730,19 +771,18 @@ extension _HomeScreenStateMenu on _HomeScreenState {
                     }),
                     _buildMenuItem(Icons.business, 'Для бизнеса', () {
                       Navigator.pop(context);
-                      // TODO: Navigate to business
+                      _showBusinessModal(context);
                     }),
                     _buildMenuItem(Icons.settings, 'Настройки', () {
                       Navigator.pop(context);
-                      // TODO: Navigate to settings
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                      );
                     }),
                     _buildMenuItem(Icons.bookmark, 'Сохраненные места', () {
                       Navigator.pop(context);
                       // TODO: Navigate to saved places
-                    }),
-                    _buildMenuItem(Icons.info, 'О приложении', () {
-                      Navigator.pop(context);
-                      // TODO: Navigate to about
                     }),
                   ],
                 ),
@@ -755,30 +795,43 @@ extension _HomeScreenStateMenu on _HomeScreenState {
   }
 
   Widget _buildMenuItem(IconData icon, String title, VoidCallback onTap) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: ListTile(
-        leading: Icon(icon, color: Colors.white, size: 24),
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w400,
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
           ),
-        ),
-        trailing: Icon(
-          Icons.arrow_forward_ios,
-          color: Colors.white,
-          size: 16,
-        ),
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
-      ),
+          child: ListTile(
+            leading: Icon(icon, color: themeProvider.textColor, size: 24),
+            title: Text(
+              title,
+              style: TextStyle(
+                color: themeProvider.textColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            trailing: Icon(
+              Icons.arrow_forward_ios,
+              color: themeProvider.textColor,
+              size: 16,
+            ),
+            onTap: onTap,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showBusinessModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const BusinessModalWidget(),
     );
   }
 }

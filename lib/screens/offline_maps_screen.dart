@@ -218,11 +218,17 @@ class _OfflineMapsScreenState extends State<OfflineMapsScreen> {
     super.initState();
     _filteredCountries = _countries;
     _searchController.addListener(_filterCountries);
+    _searchController.addListener(() {
+      setState(() {}); // Обновляем UI для показа/скрытия кнопки очистки
+    });
   }
 
   @override
   void dispose() {
     _searchController.removeListener(_filterCountries);
+    _searchController.removeListener(() {
+      setState(() {});
+    });
     _searchController.dispose();
     super.dispose();
   }
@@ -245,139 +251,121 @@ class _OfflineMapsScreenState extends State<OfflineMapsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF151515) : Colors.white,
-      appBar: AppBar(
-        backgroundColor: isDark ? const Color(0xFF151515) : Colors.white,
-        foregroundColor: isDark ? Colors.white : Colors.black,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            color: isDark ? Colors.white : Colors.black,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Оффлайн карты',
-          style: TextStyle(
-            color: isDark ? Colors.white : Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      body: Column(
-        children: [
-          // Поисковая строка
-          Container(
-            margin: const EdgeInsets.all(16),
-            child: Container(
-              height: 56,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF151515) : Colors.grey[100],
-                borderRadius: BorderRadius.circular(50),
-                border: Border.all(
-                  color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                ),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Scaffold(
+          backgroundColor: themeProvider.backgroundColor,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(
+                Icons.arrow_back,
+                color: themeProvider.textColor,
               ),
-              child: Row(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 20, right: 12),
-                    child: Icon(
-                      Icons.search,
-                      color: isDark ? Colors.white70 : Colors.grey[600],
-                      size: 22,
-                    ),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              'Оффлайн карты',
+              style: TextStyle(
+                color: themeProvider.textColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          body: Column(
+            children: [
+              // Поисковая строка (без кнопки меню, светлее фон)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF212121), // Фиксированный цвет #212121
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                        fontSize: 16,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Введите город',
-                        hintStyle: TextStyle(
-                          color: isDark ? Colors.white70 : Colors.grey[600],
-                          fontSize: 16,
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.mic,
-                        color: isDark ? Colors.white70 : Colors.grey[600],
-                        size: 22,
-                      ),
-                      onPressed: () {
-                        // TODO: Implement voice search
-                      },
-                    ),
-                  ),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[700] : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.person,
-                        color: isDark ? Colors.white70 : Colors.grey[600],
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.search,
+                        color: themeProvider.textSecondaryColor,
                         size: 20,
                       ),
-                      onPressed: () {
-                        // TODO: Navigate to profile
-                      },
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          style: TextStyle(
+                            color: themeProvider.textColor,
+                            fontSize: 16,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Поиск городов и стран',
+                            hintStyle: TextStyle(
+                              color: themeProvider.textSecondaryColor,
+                              fontSize: 16,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                      if (_searchController.text.isNotEmpty)
+                        GestureDetector(
+                          onTap: () {
+                            _searchController.clear();
+                          },
+                          child: Icon(
+                            Icons.clear,
+                            color: themeProvider.textSecondaryColor,
+                            size: 20,
+                          ),
+                        )
+                      else
+                        Icon(
+                          Icons.mic,
+                          color: themeProvider.textSecondaryColor,
+                          size: 20,
+                        ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
 
-          // Информация о памяти
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              'Доступно памяти: 30.2 гб из 64гб',
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-                fontSize: 14,
+              // Информация о памяти
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Доступно памяти: 30.2 гб из 64гб',
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontSize: 14,
+                  ),
+                ),
               ),
-            ),
-          ),
 
-          const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-          // Список стран и городов
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _filteredCountries.length,
-              itemBuilder: (context, index) {
-                final country = _filteredCountries[index];
-                return _buildCountrySection(country, isDark);
-              },
-            ),
+              // Список стран и городов
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _filteredCountries.length,
+                  itemBuilder: (context, index) {
+                    final country = _filteredCountries[index];
+                    return _buildCountrySection(country, themeProvider);
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildCountrySection(Country country, bool isDark) {
+  Widget _buildCountrySection(Country country, ThemeProvider themeProvider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -389,7 +377,7 @@ class _OfflineMapsScreenState extends State<OfflineMapsScreen> {
               Text(
                 country.name,
                 style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black87,
+                  color: themeProvider.textColor,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -404,37 +392,29 @@ class _OfflineMapsScreenState extends State<OfflineMapsScreen> {
         ),
 
         // Список городов
-        ...country.cities.map((city) => _buildCityItem(city, isDark)),
+        ...country.cities.map((city) => _buildCityItem(city, themeProvider)),
         
         const SizedBox(height: 24),
       ],
     );
   }
 
-  Widget _buildCityItem(City city, bool isDark) {
+  Widget _buildCityItem(City city, ThemeProvider themeProvider) {
     final isDownloading = _downloadingCities[city.name] == true;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[900] : Colors.grey[50],
+        color: themeProvider.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+          color: themeProvider.textColor.withOpacity(0.1),
         ),
       ),
       child: Row(
         children: [
-          // Флаг страны
-          Text(
-            '🇰🇿', // Можно сделать динамическим
-            style: const TextStyle(fontSize: 16),
-          ),
-          
-          const SizedBox(width: 12),
-          
-          // Информация о городе
+          // Информация о городе (без флага)
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -442,7 +422,7 @@ class _OfflineMapsScreenState extends State<OfflineMapsScreen> {
                 Text(
                   city.name,
                   style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
+                    color: themeProvider.textColor,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -452,7 +432,7 @@ class _OfflineMapsScreenState extends State<OfflineMapsScreen> {
                   Text(
                     city.districts.join(', '),
                     style: TextStyle(
-                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      color: themeProvider.textSecondaryColor,
                       fontSize: 12,
                     ),
                   ),

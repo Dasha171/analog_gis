@@ -1,146 +1,222 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
+import '../providers/user_actions_provider.dart';
 import 'login_screen.dart';
+import 'favorites_screen.dart';
+import 'reviews_screen.dart';
+import 'visited_places_screen.dart';
+import 'photos_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF212121),
-      appBar: AppBar(
-        title: const Text(
-          'Профиль',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Consumer<AuthProvider>(
-        builder: (context, authProvider, child) {
-          if (!authProvider.isAuthenticated) {
-            return _buildUnauthenticatedView(context);
-          }
-
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-                // Профиль пользователя
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF151515),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    children: [
-                      // Аватар
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0C79FE).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(50),
-                        ),
-                        child: authProvider.currentUser?.profileImageUrl != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(50),
-                                child: Image.network(
-                                  authProvider.currentUser!.profileImageUrl!,
-                                  width: 100,
-                                  height: 100,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.person,
-                                      size: 50,
-                                      color: Color(0xFF0C79FE),
-                                    );
-                                  },
-                                ),
-                              )
-                            : const Icon(
-                                Icons.person,
-                                size: 50,
-                                color: Color(0xFF0C79FE),
-                              ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Имя пользователя
-                      Text(
-                        authProvider.currentUser?.fullName ?? 'Пользователь',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      
-                      // Email
-                      Text(
-                        authProvider.currentUser?.email ?? '',
-                        style: const TextStyle(
-                          color: Color(0xFF6C6C6C),
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Кнопка редактирования
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          // TODO: Редактировать профиль
-                        },
-                        icon: const Icon(Icons.edit, color: Color(0xFF0C79FE)),
-                        label: const Text(
-                          'Редактировать профиль',
-                          style: TextStyle(color: Color(0xFF0C79FE)),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFF0C79FE)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // Настройки
-                _buildSettingsSection(context),
-                
-                const SizedBox(height: 24),
-                
-                // Дополнительные функции
-                _buildAdditionalSection(context),
-                
-                const SizedBox(height: 100), // Отступ для нижнего меню
-              ],
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Scaffold(
+          backgroundColor: themeProvider.backgroundColor,
+          appBar: AppBar(
+            title: Text(
+              'Профиль',
+              style: TextStyle(
+                color: themeProvider.textColor,
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          );
-        },
-      ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back, color: themeProvider.textColor),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          body: Consumer<AuthProvider>(
+            builder: (context, authProvider, child) {
+              if (!authProvider.isAuthenticated) {
+                return _buildUnauthenticatedView(context, themeProvider);
+              }
+
+              return Consumer<UserActionsProvider>(
+                builder: (context, userActionsProvider, child) {
+                  return SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // Профиль пользователя
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: themeProvider.cardColor,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                        children: [
+                          // Аватар
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0C79FE).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(50),
+                            ),
+                            child: authProvider.currentUser?.profileImageUrl != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(50),
+                                    child: Image.network(
+                                      authProvider.currentUser!.profileImageUrl!,
+                                      width: 100,
+                                      height: 100,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return const Icon(
+                                          Icons.person,
+                                          size: 50,
+                                          color: Color(0xFF0C79FE),
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.person,
+                                    size: 50,
+                                    color: Color(0xFF0C79FE),
+                                  ),
+                          ),
+                          const SizedBox(height: 16),
+                          
+                          // Имя пользователя
+                          Text(
+                            authProvider.currentUser?.fullName ?? 'Пользователь',
+                            style: TextStyle(
+                              color: themeProvider.textColor,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          
+                          // Email
+                          Text(
+                            authProvider.currentUser?.email ?? '',
+                            style: TextStyle(
+                              color: themeProvider.textSecondaryColor,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          
+                          // Кнопка редактирования
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              // TODO: Редактировать профиль
+                            },
+                            icon: const Icon(Icons.edit, color: Color(0xFF0C79FE)),
+                            label: const Text(
+                              'Редактировать профиль',
+                              style: TextStyle(color: Color(0xFF0C79FE)),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFF0C79FE)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                        const SizedBox(height: 24),
+                        
+                        // Избранное
+                        _buildActionSection(
+                          context,
+                          themeProvider,
+                          userActionsProvider,
+                          'Избранное',
+                          Icons.favorite,
+                          userActionsProvider.favorites.length,
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const FavoritesScreen()),
+                            );
+                          },
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Мои отзывы
+                        _buildActionSection(
+                          context,
+                          themeProvider,
+                          userActionsProvider,
+                          'Мои отзывы',
+                          Icons.rate_review,
+                          userActionsProvider.reviews.length,
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ReviewsScreen()),
+                            );
+                          },
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Посещенные места
+                        _buildActionSection(
+                          context,
+                          themeProvider,
+                          userActionsProvider,
+                          'Посещенные места',
+                          Icons.location_on,
+                          userActionsProvider.visitedPlaces.length,
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const VisitedPlacesScreen()),
+                            );
+                          },
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Фото
+                        _buildActionSection(
+                          context,
+                          themeProvider,
+                          userActionsProvider,
+                          'Фото',
+                          Icons.photo_library,
+                          userActionsProvider.photos.length,
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const PhotosScreen()),
+                            );
+                          },
+                        ),
+                        
+                        const SizedBox(height: 100), // Отступ для нижнего меню
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildUnauthenticatedView(BuildContext context) {
+  Widget _buildUnauthenticatedView(BuildContext context, ThemeProvider themeProvider) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -165,10 +241,10 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 32),
             
             // Заголовок
-            const Text(
+            Text(
               'Войдите в аккаунт',
               style: TextStyle(
-                color: Colors.white,
+                color: themeProvider.textColor,
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
@@ -178,10 +254,10 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 16),
             
             // Описание
-            const Text(
+            Text(
               'Войдите в свой аккаунт, чтобы получить доступ ко всем функциям приложения',
               style: TextStyle(
-                color: Color(0xFF6C6C6C),
+                color: themeProvider.textSecondaryColor,
                 fontSize: 16,
               ),
               textAlign: TextAlign.center,
@@ -222,22 +298,22 @@ class ProfileScreen extends StatelessWidget {
     );
   }
   
-  Widget _buildSettingsSection(BuildContext context) {
+  Widget _buildSettingsSection(BuildContext context, ThemeProvider themeProvider) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF151515),
+        color: themeProvider.cardColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
+          Padding(
+            padding: const EdgeInsets.all(16),
             child: Text(
               'Настройки',
               style: TextStyle(
-                color: Colors.white,
+                color: themeProvider.textColor,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -251,6 +327,7 @@ class ProfileScreen extends StatelessWidget {
             onTap: () {
               // TODO: Настройки языка
             },
+            themeProvider: themeProvider,
           ),
           
           _buildSettingsItem(
@@ -260,6 +337,7 @@ class ProfileScreen extends StatelessWidget {
             onTap: () {
               // TODO: Настройки уведомлений
             },
+            themeProvider: themeProvider,
           ),
           
           _buildSettingsItem(
@@ -269,6 +347,7 @@ class ProfileScreen extends StatelessWidget {
             onTap: () {
               // TODO: Настройки приватности
             },
+            themeProvider: themeProvider,
           ),
           
           _buildSettingsItem(
@@ -278,28 +357,29 @@ class ProfileScreen extends StatelessWidget {
             onTap: () {
               // TODO: Настройки безопасности
             },
+            themeProvider: themeProvider,
           ),
         ],
       ),
     );
   }
   
-  Widget _buildAdditionalSection(BuildContext context) {
+  Widget _buildAdditionalSection(BuildContext context, ThemeProvider themeProvider) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF151515),
+        color: themeProvider.cardColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
+          Padding(
+            padding: const EdgeInsets.all(16),
             child: Text(
               'Дополнительно',
               style: TextStyle(
-                color: Colors.white,
+                color: themeProvider.textColor,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -313,6 +393,7 @@ class ProfileScreen extends StatelessWidget {
             onTap: () {
               // TODO: Помощь
             },
+            themeProvider: themeProvider,
           ),
           
           _buildSettingsItem(
@@ -322,6 +403,7 @@ class ProfileScreen extends StatelessWidget {
             onTap: () {
               _showAboutDialog(context);
             },
+            themeProvider: themeProvider,
           ),
           
           _buildSettingsItem(
@@ -332,6 +414,7 @@ class ProfileScreen extends StatelessWidget {
               _showLogoutDialog(context);
             },
             textColor: Colors.red,
+            themeProvider: themeProvider,
           ),
         ],
       ),
@@ -344,6 +427,7 @@ class ProfileScreen extends StatelessWidget {
     required String subtitle,
     required VoidCallback onTap,
     Color? textColor,
+    required ThemeProvider themeProvider,
   }) {
     return InkWell(
       onTap: onTap,
@@ -353,7 +437,7 @@ class ProfileScreen extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: textColor ?? const Color(0xFF6C6C6C),
+              color: textColor ?? themeProvider.textSecondaryColor,
               size: 24,
             ),
             const SizedBox(width: 16),
@@ -364,25 +448,25 @@ class ProfileScreen extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      color: textColor ?? Colors.white,
+                      color: textColor ?? themeProvider.textColor,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: Color(0xFF6C6C6C),
+                    style: TextStyle(
+                      color: themeProvider.textSecondaryColor,
                       fontSize: 14,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.arrow_forward_ios,
               size: 16,
-              color: Color(0xFF6C6C6C),
+              color: themeProvider.textSecondaryColor,
             ),
           ],
         ),
@@ -454,5 +538,84 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildActionSection(
+    BuildContext context,
+    ThemeProvider themeProvider,
+    UserActionsProvider userActionsProvider,
+    String title,
+    IconData icon,
+    int count,
+    VoidCallback onTap,
+  ) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: themeProvider.cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0C79FE).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: const Color(0xFF0C79FE),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: themeProvider.textColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$count ${_getCountText(count)}',
+                      style: TextStyle(
+                        color: themeProvider.textSecondaryColor,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                color: themeProvider.textSecondaryColor,
+                size: 16,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getCountText(int count) {
+    if (count == 0) return 'пока нет';
+    if (count == 1) return 'место';
+    if (count >= 2 && count <= 4) return 'места';
+    return 'мест';
   }
 }

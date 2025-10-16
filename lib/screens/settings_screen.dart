@@ -1,361 +1,327 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/localization_provider.dart';
 import '../providers/theme_provider.dart';
-import 'offline_maps_screen.dart';
+import 'map_settings_screen.dart';
+import 'navigation_settings_screen.dart';
+import 'language_settings_screen.dart';
+import 'data_settings_screen.dart';
+import 'notification_settings_screen.dart';
+import 'privacy_settings_screen.dart';
+import 'about_screen.dart';
+import 'edit_profile_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Настройки'),
-      ),
-      body: ListView(
-        children: [
-          // Внешний вид
-          _buildSection(
-            title: 'Внешний вид',
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Scaffold(
+          backgroundColor: themeProvider.isDarkMode 
+              ? const Color(0xFF151515) 
+              : Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(
+                Icons.arrow_back,
+                color: themeProvider.isDarkMode ? Colors.white : Colors.black,
+              ),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              'Настройки',
+              style: TextStyle(
+                color: themeProvider.isDarkMode ? Colors.white : Colors.black,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          body: Column(
             children: [
-              Consumer<ThemeProvider>(
-                builder: (context, themeProvider, child) {
-                  return ListTile(
-                    leading: Icon(
-                      themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                      color: themeProvider.isDarkMode ? Colors.amber : Colors.orange,
-                    ),
-                    title: Text(
-                      themeProvider.isDarkMode ? 'Темная тема' : 'Светлая тема',
-                    ),
-                    subtitle: Text(
-                      themeProvider.isDarkMode 
-                          ? 'Включена темная тема' 
-                          : 'Включена светлая тема',
-                    ),
-                    trailing: Switch(
-                      value: themeProvider.isDarkMode,
-                      onChanged: (value) {
-                        themeProvider.toggleTheme();
+              // Поисковая строка
+              _buildSearchBar(themeProvider),
+              
+              // Список настроек
+              Expanded(
+                child: ListView(
+                children: [
+                  _buildSettingsItem(
+                    icon: Icons.person_outline,
+                    title: 'Редактировать профиль',
+                    themeProvider: themeProvider,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                      );
+                    },
+                  ),
+                  _buildSettingsItem(
+                    icon: Icons.map_outlined,
+                    title: 'Карта и отображение',
+                    themeProvider: themeProvider,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const MapSettingsScreen()),
+                      );
+                    },
+                  ),
+                    _buildSettingsItem(
+                      icon: Icons.volume_up_outlined,
+                      title: 'Навигация и голос',
+                      themeProvider: themeProvider,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NavigationSettingsScreen()),
+                        );
                       },
-                      activeColor: Colors.blue,
                     ),
-                    onTap: () {
-                      themeProvider.toggleTheme();
-                    },
-                  );
-                },
-              ),
-            ],
-          ),
-          
-          // Локализация
-          _buildSection(
-            title: 'Язык и регион',
-            children: [
-              Consumer<LocalizationProvider>(
-                builder: (context, localizationProvider, child) {
-                  return ListTile(
-                    leading: const Icon(Icons.language),
-                    title: const Text('Язык'),
-                    subtitle: Text(
-                      localizationProvider.locale.languageCode == 'ru' 
-                          ? 'Русский' 
-                          : 'English',
+                    _buildSettingsItem(
+                      icon: Icons.language_outlined,
+                      title: 'Язык и регион',
+                      themeProvider: themeProvider,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LanguageSettingsScreen()),
+                        );
+                      },
                     ),
-                    trailing: const Icon(Icons.arrow_forward_ios),
-                    onTap: () {
-                      localizationProvider.toggleLanguage();
-                    },
-                  );
-                },
-              ),
-            ],
-          ),
-          
-          // Навигация
-          _buildSection(
-            title: 'Навигация',
-            children: [
-              ListTile(
-                leading: const Icon(Icons.volume_up),
-                title: const Text('Голосовые подсказки'),
-                subtitle: const Text('Включить озвучивание маршрутов'),
-                trailing: Switch(
-                  value: true,
-                  onChanged: (value) {
-                    // TODO: Сохранить настройку
-                  },
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.speed),
-                title: const Text('Избегать пробок'),
-                subtitle: const Text('Учитывать загруженность дорог'),
-                trailing: Switch(
-                  value: false,
-                  onChanged: (value) {
-                    // TODO: Сохранить настройку
-                  },
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.toll),
-                title: const Text('Избегать платных дорог'),
-                subtitle: const Text('Прокладывать маршруты без платных участков'),
-                trailing: Switch(
-                  value: false,
-                  onChanged: (value) {
-                    // TODO: Сохранить настройку
-                  },
-                ),
-              ),
-            ],
-          ),
-          
-          // Карты
-          _buildSection(
-            title: 'Карты',
-            children: [
-              ListTile(
-                leading: const Icon(Icons.download),
-                title: const Text('Офлайн карты'),
-                subtitle: const Text('Загруженные регионы'),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const OfflineMapsScreen(),
+                    _buildSettingsItem(
+                      icon: Icons.storage_outlined,
+                      title: 'Данные и память',
+                      themeProvider: themeProvider,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const DataSettingsScreen()),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.layers),
-                title: const Text('Стиль карты'),
-                subtitle: const Text('Стандартная'),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  _showMapStyleDialog(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.brightness_6),
-                title: const Text('Ночной режим'),
-                subtitle: const Text('Темная тема карты'),
-                trailing: Switch(
-                  value: false,
-                  onChanged: (value) {
-                    // TODO: Сохранить настройку
-                  },
+                    _buildSettingsItem(
+                      icon: Icons.notifications_outlined,
+                      title: 'Уведомления',
+                      themeProvider: themeProvider,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
+                        );
+                      },
+                    ),
+                    _buildSettingsItem(
+                      icon: Icons.lock_outline,
+                      title: 'Конфиденциальность',
+                      themeProvider: themeProvider,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const PrivacySettingsScreen()),
+                        );
+                      },
+                    ),
+                    _buildSettingsItem(
+                      icon: Icons.info_outline,
+                      title: 'О приложении',
+                      themeProvider: themeProvider,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AboutScreen()),
+                        );
+                      },
+                    ),
+                    
+                    const SizedBox(height: 32),
+                    
+                    // Переключатель темы
+                    _buildThemeSwitch(themeProvider),
+                    
+                    const SizedBox(height: 100), // Отступ для iOS home indicator
+                  ],
                 ),
               ),
             ],
           ),
-          
-          // Уведомления
-          _buildSection(
-            title: 'Уведомления',
-            children: [
-              ListTile(
-                leading: const Icon(Icons.notifications),
-                title: const Text('Push-уведомления'),
-                subtitle: const Text('Получать уведомления о пробках и событиях'),
-                trailing: Switch(
-                  value: true,
-                  onChanged: (value) {
-                    // TODO: Сохранить настройку
-                  },
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.location_on),
-                title: const Text('Уведомления о местоположении'),
-                subtitle: const Text('Разрешить доступ к геолокации'),
-                trailing: Switch(
-                  value: true,
-                  onChanged: (value) {
-                    // TODO: Сохранить настройку
-                  },
-                ),
-              ),
-            ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchBar(ThemeProvider themeProvider) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: themeProvider.isDarkMode 
+            ? const Color(0xFF252525) 
+            : const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.search,
+            color: themeProvider.isDarkMode 
+                ? Colors.white.withOpacity(0.6) 
+                : Colors.black.withOpacity(0.6),
+            size: 20,
           ),
-          
-          // Приватность
-          _buildSection(
-            title: 'Приватность',
-            children: [
-              ListTile(
-                leading: const Icon(Icons.privacy_tip),
-                title: const Text('Политика конфиденциальности'),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  // TODO: Открыть политику конфиденциальности
-                },
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Введите текст',
+              style: TextStyle(
+                color: themeProvider.isDarkMode 
+                    ? Colors.white.withOpacity(0.6) 
+                    : Colors.black.withOpacity(0.6),
+                fontSize: 16,
               ),
-              ListTile(
-                leading: const Icon(Icons.description),
-                title: const Text('Условия использования'),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  // TODO: Открыть условия использования
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete),
-                title: const Text('Удалить данные'),
-                subtitle: const Text('Очистить кэш и сохраненные данные'),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  _showDeleteDataDialog(context);
-                },
-              ),
-            ],
+            ),
           ),
-          
-          // О приложении
-          _buildSection(
-            title: 'О приложении',
-            children: [
-              ListTile(
-                leading: const Icon(Icons.info),
-                title: const Text('Версия'),
-                subtitle: const Text('1.0.0'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.star),
-                title: const Text('Оценить приложение'),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  // TODO: Открыть страницу в магазине приложений
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.feedback),
-                title: const Text('Обратная связь'),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  // TODO: Открыть форму обратной связи
-                },
-              ),
-            ],
+          Icon(
+            Icons.mic_outlined,
+            color: themeProvider.isDarkMode 
+                ? Colors.white.withOpacity(0.6) 
+                : Colors.black.withOpacity(0.6),
+            size: 20,
           ),
         ],
       ),
     );
   }
-  
-  Widget _buildSection({
+
+  Widget _buildSettingsItem({
+    required IconData icon,
     required String title,
-    required List<Widget> children,
+    required ThemeProvider themeProvider,
+    required VoidCallback onTap,
   }) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey,
+        InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  color: themeProvider.textColor,
+                  size: 24,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: themeProvider.textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: themeProvider.textSecondaryColor,
+                  size: 16,
+                ),
+              ],
             ),
           ),
         ),
-        ...children,
+        Container(
+          height: 1,
+          color: const Color(0xFF252525),
+          margin: const EdgeInsets.only(left: 30, right: 30),
+        ),
       ],
     );
   }
-  
-  void _showOfflineMapsDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Офлайн карты'),
-        content: const Text(
-          'Загрузите карты регионов для использования без интернета.\n\n'
-          'Доступные регионы:\n'
-          '• Алматы (150 МБ)\n'
-          '• Астана (120 МБ)\n'
-          '• Шымкент (80 МБ)',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
+
+  Widget _buildThemeSwitch(ThemeProvider themeProvider) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Row(
+        children: [
+          Text(
+            'Тема приложения',
+            style: TextStyle(
+              color: themeProvider.isDarkMode ? Colors.white : Colors.black,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: Показать экран загрузки карт
+          const Spacer(),
+          GestureDetector(
+            onTap: () {
+              themeProvider.toggleTheme();
             },
-            child: const Text('Загрузить'),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  void _showMapStyleDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Стиль карты'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.map),
-              title: const Text('Стандартная'),
-              onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 80,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFF404040),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Stack(
+                children: [
+                  // Анимированный круг (под иконками)
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    left: themeProvider.isDarkMode ? 40 : 0,
+                    top: 0,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0C79FE),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF0C79FE).withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Иконки солнца и луны (поверх круга)
+                  Positioned(
+                    left: 8,
+                    top: 8,
+                    child: Icon(
+                      Icons.wb_sunny,
+                      color: themeProvider.isDarkMode ? Colors.white.withOpacity(0.6) : Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Icon(
+                      Icons.dark_mode,
+                      color: themeProvider.isDarkMode ? Colors.white : Colors.white.withOpacity(0.6),
+                      size: 24,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            ListTile(
-              leading: const Icon(Icons.satellite),
-              title: const Text('Спутник'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.terrain),
-              title: const Text('Рельеф'),
-              onTap: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  void _showDeleteDataDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Удалить данные'),
-        content: const Text(
-          'Это действие удалит все загруженные карты, '
-          'историю поиска и другие сохраненные данные. '
-          'Это действие нельзя отменить.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: Удалить данные
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Данные удалены')),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text('Удалить'),
           ),
         ],
       ),

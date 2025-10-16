@@ -10,6 +10,9 @@ class AuthProvider extends ChangeNotifier {
   User? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
+  
+  // Временное хранение данных регистрации
+  Map<String, String> _pendingRegistration = {};
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     // Включаем Google Sign-In для веб-версии с Client ID
     clientId: kIsWeb ? '230044526443-o5c8ns3lpd1a36phjc6acto5klr05g0u.apps.googleusercontent.com' : null,
@@ -21,6 +24,11 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _currentUser != null;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  
+  /// Принудительно загружает пользователя из хранилища
+  Future<void> loadUserSession() async {
+    await _loadUserFromStorage();
+  }
 
   AuthProvider() {
     _loadUserFromStorage();
@@ -39,14 +47,28 @@ class AuthProvider extends ChangeNotifier {
         // Проверяем, что email верифицирован
         if (user.isEmailVerified) {
           _currentUser = user;
+          print('Пользователь загружен из хранилища: ${user.fullName}');
         } else {
-          // Если email не верифицирован, выходим из аккаунта
-          await signOut();
+          // Если email не верифицирован, очищаем данные
+          print('Email не верифицирован, очищаем данные');
+          await prefs.remove('current_user');
+          _currentUser = null;
         }
         notifyListeners();
+      } else {
+        print('Нет сохраненного пользователя');
       }
     } catch (e) {
       print('Ошибка загрузки пользователя: $e');
+      // При ошибке очищаем данные
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('current_user');
+      } catch (clearError) {
+        print('Ошибка очистки данных: $clearError');
+      }
+      _currentUser = null;
+      notifyListeners();
     }
   }
 
@@ -55,6 +77,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('current_user', json.encode(user.toJson()));
+      print('Пользователь сохранен в хранилище: ${user.fullName}');
     } catch (e) {
       print('Ошибка сохранения пользователя: $e');
     }
@@ -65,6 +88,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('current_user');
+      print('Данные пользователя очищены из хранилища');
     } catch (e) {
       print('Ошибка очистки хранилища: $e');
     }
@@ -147,6 +171,13 @@ class AuthProvider extends ChangeNotifier {
         _setLoading(false);
         return false;
       }
+
+      // Сохраняем данные регистрации для использования после верификации
+      _pendingRegistration[email] = json.encode({
+        'firstName': firstName,
+        'lastName': lastName,
+        'phone': phone,
+      });
 
       // Создаем временного пользователя (будет подтвержден после ввода кода)
       final user = User(
@@ -242,13 +273,34 @@ class AuthProvider extends ChangeNotifier {
       }
 
       // Создаем пользователя после успешной верификации
-      // В реальном приложении здесь был бы запрос к серверу для получения данных пользователя
+      // Используем сохраненные данные регистрации или данные существующего пользователя
+      String firstName = 'Пользователь';
+      String lastName = '';
+      String phone = '';
+      
+      // Проверяем, есть ли сохраненные данные регистрации
+      if (_pendingRegistration.containsKey(email)) {
+        final registrationJson = _pendingRegistration[email];
+        if (registrationJson != null) {
+          final registrationData = json.decode(registrationJson);
+          firstName = registrationData['firstName'] ?? 'Пользователь';
+          lastName = registrationData['lastName'] ?? '';
+          phone = registrationData['phone'] ?? '';
+          _pendingRegistration.remove(email); // Удаляем после использования
+        }
+      } else if (_currentUser != null) {
+        // Используем данные существующего пользователя
+        firstName = _currentUser!.firstName;
+        lastName = _currentUser!.lastName;
+        phone = _currentUser!.phone;
+      }
+      
       final user = User(
         id: email,
-        firstName: 'Пользователь', // Временно, пока не получим данные из базы
-        lastName: '',
+        firstName: firstName,
+        lastName: lastName,
         email: email,
-        phone: '',
+        phone: phone,
         createdAt: DateTime.now(),
         isEmailVerified: true,
       );
@@ -297,13 +349,16 @@ class AuthProvider extends ChangeNotifier {
       
       // Очищаем данные пользователя
       _currentUser = null;
+      _pendingRegistration.clear(); // Очищаем временные данные регистрации
       await _clearUserFromStorage();
       
       _setLoading(false);
       notifyListeners();
+      print('Пользователь вышел из аккаунта');
     } catch (e) {
       _setError('Ошибка выхода: $e');
       _setLoading(false);
+      notifyListeners();
     }
   }
 

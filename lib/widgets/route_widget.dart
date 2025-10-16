@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:latlong2/latlong.dart' as latlng;
 import '../providers/route_provider.dart';
 import '../providers/map_provider.dart';
+import '../providers/theme_provider.dart';
 
 // Import TransportMode enum
 export '../providers/route_provider.dart' show TransportMode;
@@ -27,12 +28,12 @@ class RouteWidget extends StatelessWidget {
                 const SizedBox(height: 12),
                 
                 // Кнопки быстрого доступа
-                _buildQuickAccessButtons(),
+                _buildQuickAccessButtons(context),
                 
                 const SizedBox(height: 12),
                 
                 // Кнопки транспорта
-                _buildTransportButtons(routeProvider),
+                _buildTransportButtons(context, routeProvider),
               ],
             ),
           ),
@@ -56,9 +57,9 @@ class RouteWidget extends StatelessWidget {
               _buildLocationField(
                 context,
                 icon: isFromCurrentLocation ? Icons.my_location : Icons.location_on,
-                iconColor: isFromCurrentLocation ? const Color(0xFF0C79FE) : const Color(0xFF6C6C6C),
+                iconColor: isFromCurrentLocation ? const Color(0xFF0C79FE) : Provider.of<ThemeProvider>(context, listen: false).textSecondaryColor,
                 text: routeProvider.fromLocation,
-                textColor: Colors.white,
+                textColor: Provider.of<ThemeProvider>(context, listen: false).textColor,
                 onTap: () {
                   if (isFromCurrentLocation) {
                     // Get current location
@@ -80,9 +81,9 @@ class RouteWidget extends StatelessWidget {
               _buildLocationField(
                 context,
                 icon: isToCurrentLocation ? Icons.my_location : Icons.location_on,
-                iconColor: isToCurrentLocation ? const Color(0xFF0C79FE) : const Color(0xFF6C6C6C),
+                iconColor: isToCurrentLocation ? const Color(0xFF0C79FE) : Provider.of<ThemeProvider>(context, listen: false).textSecondaryColor,
                 text: routeProvider.toLocation.isEmpty ? 'Куда?' : routeProvider.toLocation,
-                textColor: routeProvider.toLocation.isEmpty ? const Color(0xFF6C6C6C) : Colors.white,
+                textColor: routeProvider.toLocation.isEmpty ? Provider.of<ThemeProvider>(context, listen: false).textSecondaryColor : Provider.of<ThemeProvider>(context, listen: false).textColor,
                 onTap: () {
                   if (isToCurrentLocation) {
                     context.read<MapProvider>().getCurrentLocation().then((_) {
@@ -106,41 +107,49 @@ class RouteWidget extends StatelessWidget {
         Column(
           children: [
             // Кнопка смены местоположений
-            GestureDetector(
-              onTap: () => routeProvider.swapLocations(),
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF151515),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.swap_vert,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
+            Consumer<ThemeProvider>(
+              builder: (context, themeProvider, child) {
+                return GestureDetector(
+                  onTap: () => routeProvider.swapLocations(),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: themeProvider.surfaceColor,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.swap_vert,
+                      color: themeProvider.textColor,
+                      size: 20,
+                    ),
+                  ),
+                );
+              },
             ),
             
             const SizedBox(height: 8),
             
             // Кнопка меню
-            GestureDetector(
-              onTap: onMenuTap,
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF151515),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.menu,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
+            Consumer<ThemeProvider>(
+              builder: (context, themeProvider, child) {
+                return GestureDetector(
+                  onTap: onMenuTap,
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: themeProvider.surfaceColor,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.menu,
+                      color: themeProvider.textColor,
+                      size: 20,
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -162,7 +171,7 @@ class RouteWidget extends StatelessWidget {
         height: 48,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF151515),
+          color: Provider.of<ThemeProvider>(context, listen: false).surfaceColor,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
@@ -188,58 +197,62 @@ class RouteWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickAccessButtons() {
+  Widget _buildQuickAccessButtons(BuildContext context) {
     return Row(
       children: [
         Expanded(
-          child: _buildQuickButton(Icons.home, 'Дом'),
+          child: _buildQuickButton(context, Icons.home, 'Дом'),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _buildQuickButton(Icons.work, 'Работа'),
+          child: _buildQuickButton(context, Icons.work, 'Работа'),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _buildQuickButton(Icons.add, 'Добавить'),
+          child: _buildQuickButton(context, Icons.add, 'Добавить'),
         ),
       ],
     );
   }
 
-  Widget _buildQuickButton(IconData icon, String label) {
-    return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF151515),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: Colors.white,
-            size: 16,
+  Widget _buildQuickButton(BuildContext context, IconData icon, String label) {
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: themeProvider.surfaceColor,
+            borderRadius: BorderRadius.circular(10),
           ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: themeProvider.textColor,
+                size: 16,
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontSize: 13,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildTransportButtons(RouteProvider routeProvider) {
+  Widget _buildTransportButtons(BuildContext context, RouteProvider routeProvider) {
     final transportModes = [
       TransportMode.car,
       TransportMode.bus,
@@ -250,32 +263,36 @@ class RouteWidget extends StatelessWidget {
       TransportMode.truck,
     ];
 
-    return Row(
-      children: transportModes.map((mode) {
-        final isSelected = routeProvider.selectedTransport == mode;
-        return Expanded(
-          child: Container(
-            margin: EdgeInsets.only(
-              right: mode == TransportMode.truck ? 0 : 4,
-            ),
-            child: GestureDetector(
-              onTap: () => routeProvider.setTransportMode(mode),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Row(
+          children: transportModes.map((mode) {
+            final isSelected = routeProvider.selectedTransport == mode;
+            return Expanded(
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF151515) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(7),
+                margin: EdgeInsets.only(
+                  right: mode == TransportMode.truck ? 0 : 4,
                 ),
-                child: Icon(
-                  routeProvider.getTransportIcon(mode),
-                  color: Colors.white,
-                  size: 20,
+                child: GestureDetector(
+                  onTap: () => routeProvider.setTransportMode(mode),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? themeProvider.surfaceColor : Colors.transparent,
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: Icon(
+                      routeProvider.getTransportIcon(mode),
+                      color: themeProvider.textColor,
+                      size: 20,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          }).toList(),
         );
-      }).toList(),
+      },
     );
   }
 
@@ -303,46 +320,50 @@ class RouteWidget extends StatelessWidget {
           ),
         );
       },
-      pageBuilder: (context, animation, secondaryAnimation) => AlertDialog(
-        backgroundColor: const Color(0xFF212121),
-        title: Text(
-          isFrom ? 'Выберите место отправления' : 'Выберите место назначения',
-          style: const TextStyle(color: Colors.white),
-        ),
-        content: TextField(
-          controller: searchController,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'Введите адрес или название места',
-            hintStyle: TextStyle(color: Color(0xFF6C6C6C)),
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Отмена',
-              style: TextStyle(color: Color(0xFF6C6C6C)),
+      pageBuilder: (context, animation, secondaryAnimation) => Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return AlertDialog(
+            backgroundColor: themeProvider.cardColor,
+            title: Text(
+              isFrom ? 'Выберите место отправления' : 'Выберите место назначения',
+              style: TextStyle(color: themeProvider.textColor),
             ),
-          ),
-          TextButton(
-            onPressed: () {
-              if (searchController.text.isNotEmpty) {
-                if (isFrom) {
-                  routeProvider.setFromLocation(searchController.text);
-                } else {
-                  routeProvider.setToLocation(searchController.text);
-                }
-                Navigator.pop(context);
-              }
-            },
-            child: const Text(
-              'Выбрать',
-              style: TextStyle(color: Color(0xFF0C79FE)),
+            content: TextField(
+              controller: searchController,
+              style: TextStyle(color: themeProvider.textColor),
+              decoration: InputDecoration(
+                hintText: 'Введите адрес или название места',
+                hintStyle: TextStyle(color: themeProvider.textSecondaryColor),
+                border: const OutlineInputBorder(),
+              ),
             ),
-          ),
-        ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Отмена',
+                  style: TextStyle(color: themeProvider.textSecondaryColor),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  if (searchController.text.isNotEmpty) {
+                    if (isFrom) {
+                      routeProvider.setFromLocation(searchController.text);
+                    } else {
+                      routeProvider.setToLocation(searchController.text);
+                    }
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text(
+                  'Выбрать',
+                  style: TextStyle(color: Color(0xFF0C79FE)),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

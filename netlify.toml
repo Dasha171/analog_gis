@@ -5,13 +5,31 @@
 [build.environment]
   NODE_VERSION = "18"
   FLUTTER_VERSION = "3.16.0"
+  FLUTTER_WEB_AUTO_DETECT = "true"
 
 # Автоматический деплой при push в main
 [build.processing]
   skip_processing = false
 
+# Настройки для SPA
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Кэширование статических ресурсов
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
 

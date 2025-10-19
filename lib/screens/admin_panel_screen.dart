@@ -16,7 +16,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AdminProvider>().initialize();
+      final authProvider = context.read<AuthProvider>();
+      context.read<AdminProvider>().initialize(authProvider: authProvider);
     });
   }
 
@@ -42,69 +43,106 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
         return Scaffold(
           backgroundColor: themeProvider.backgroundColor,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: Icon(Icons.arrow_back, color: themeProvider.textColor),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: Text(
-              'Админ панель',
-              style: TextStyle(
-                color: themeProvider.textColor,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.refresh, color: themeProvider.textColor),
-                onPressed: () {
-                  adminProvider.updateStats();
-                },
-              ),
-            ],
-          ),
           body: adminProvider.isLoading
               ? Center(
                   child: CircularProgressIndicator(
                     color: const Color(0xFF0C79FE),
                   ),
                 )
-              : DefaultTabController(
-                  length: 4,
-                  child: Column(
-                    children: [
-                      // Табы
-                      Container(
-                        color: themeProvider.cardColor,
-                        child: TabBar(
-                          indicatorColor: const Color(0xFF0C79FE),
-                          labelColor: themeProvider.textColor,
-                          unselectedLabelColor: themeProvider.textSecondaryColor,
-                          tabs: const [
-                            Tab(text: 'Статистика'),
-                            Tab(text: 'Пользователи'),
-                            Tab(text: 'Организации'),
-                            Tab(text: 'Настройки'),
-                          ],
-                        ),
+              : Column(
+                  children: [
+                    // Кастомный AppBar без белой полосы
+                    Container(
+                      padding: EdgeInsets.only(
+                        top: MediaQuery.of(context).padding.top + 16,
+                        left: 24,
+                        right: 24,
+                        bottom: 16,
                       ),
-                      
-                      // Содержимое табов
-                      Expanded(
-                        child: TabBarView(
+                      decoration: BoxDecoration(
+                        color: themeProvider.backgroundColor,
+                        boxShadow: [
+                          BoxShadow(
+                            color: themeProvider.textColor.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.arrow_back, color: themeProvider.textColor),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                          Expanded(
+                            child: Text(
+                              'Админ панель',
+                              style: TextStyle(
+                                color: themeProvider.textColor,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.refresh, color: themeProvider.textColor),
+                            onPressed: () {
+                              adminProvider.updateStats();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    // Содержимое с табами
+                    Expanded(
+                      child: DefaultTabController(
+                        length: 4,
+                        child: Column(
                           children: [
-                            _buildStatsTab(context, themeProvider, adminProvider),
-                            _buildUsersTab(context, themeProvider, adminProvider),
-                            _buildOrganizationsTab(context, themeProvider, adminProvider),
-                            _buildSettingsTab(context, themeProvider, adminProvider),
+                            // Кастомные табы
+                            Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 24),
+                              decoration: BoxDecoration(
+                                color: themeProvider.cardColor,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: TabBar(
+                                indicator: BoxDecoration(
+                                  color: const Color(0xFF0C79FE),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                indicatorSize: TabBarIndicatorSize.tab,
+                                dividerColor: Colors.transparent,
+                                labelColor: Colors.white,
+                                unselectedLabelColor: themeProvider.textSecondaryColor,
+                                labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                                tabs: const [
+                                  Tab(text: 'Статистика'),
+                                  Tab(text: 'Пользователи'),
+                                  Tab(text: 'Организации'),
+                                  Tab(text: 'Настройки'),
+                                ],
+                              ),
+                            ),
+                            
+                            // Содержимое табов
+                            Expanded(
+                              child: TabBarView(
+                                children: [
+                                  _buildStatsTab(context, themeProvider, adminProvider),
+                                  _buildUsersTab(context, themeProvider, adminProvider),
+                                  _buildOrganizationsTab(context, themeProvider, adminProvider),
+                                  _buildSettingsTab(context, themeProvider, adminProvider),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
         );
       },
@@ -113,29 +151,76 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   Widget _buildStatsTab(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Общая статистика
-          _buildStatsCard(
-            themeProvider,
+          // Заголовок
+          Text(
             'Общая статистика',
-            [
-              _buildStatItem(themeProvider, 'Всего пользователей', '${adminProvider.appStats.totalUsers}', Icons.people),
-              _buildStatItem(themeProvider, 'Активных пользователей', '${adminProvider.appStats.activeUsers}', Icons.person),
-              _buildStatItem(themeProvider, 'Организаций', '${adminProvider.appStats.totalOrganizations}', Icons.business),
-              _buildStatItem(themeProvider, 'Отзывов', '${adminProvider.appStats.totalReviews}', Icons.rate_review),
-              _buildStatItem(themeProvider, 'Фотографий', '${adminProvider.appStats.totalPhotos}', Icons.photo_library),
-              _buildStatItem(themeProvider, 'Дружеских связей', '${adminProvider.appStats.totalFriendships}', Icons.favorite),
-            ],
+            style: TextStyle(
+              color: themeProvider.textColor,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 20),
+          
+          // Адаптивная сетка статистики
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final crossAxisCount = constraints.maxWidth > 800 ? 2 : 1;
+              return GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 2.5,
+                children: [
+                  _buildStatCard(themeProvider, 'Всего пользователей', '${adminProvider.appStats.totalUsers}', Icons.people, const Color(0xFF0C79FE)),
+                  _buildStatCard(themeProvider, 'Активных пользователей', '${adminProvider.appStats.activeUsers}', Icons.person, Colors.green),
+                  _buildStatCard(themeProvider, 'Организаций', '${adminProvider.appStats.totalOrganizations}', Icons.business, Colors.orange),
+                  _buildStatCard(themeProvider, 'Отзывов', '${adminProvider.appStats.totalReviews}', Icons.rate_review, Colors.purple),
+                  _buildStatCard(themeProvider, 'Фотографий', '${adminProvider.appStats.totalPhotos}', Icons.photo_library, Colors.pink),
+                  _buildStatCard(themeProvider, 'Дружеских связей', '${adminProvider.appStats.totalFriendships}', Icons.favorite, Colors.red),
+                ],
+              );
+            },
           ),
           
-          const SizedBox(height: 16),
+          const SizedBox(height: 32),
           
-          // Графики (заглушки)
-          _buildChartCard(themeProvider, 'Активность пользователей', 'График активности за последние 30 дней'),
-          _buildChartCard(themeProvider, 'Популярные места', 'Топ-10 самых посещаемых мест'),
-          _buildChartCard(themeProvider, 'География пользователей', 'Распределение пользователей по регионам'),
+          // Графики в адаптивной сетке
+          Text(
+            'Аналитика',
+            style: TextStyle(
+              color: themeProvider.textColor,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 20),
+          
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final crossAxisCount = constraints.maxWidth > 800 ? 2 : 1;
+              return GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.5,
+                children: [
+                  _buildChartCard(themeProvider, 'Активность пользователей', 'График активности за последние 30 дней', Icons.trending_up),
+                  _buildChartCard(themeProvider, 'Популярные места', 'Топ-10 самых посещаемых мест', Icons.location_on),
+                  _buildChartCard(themeProvider, 'География пользователей', 'Распределение пользователей по регионам', Icons.public),
+                  _buildChartCard(themeProvider, 'Конверсия', 'Статистика конверсии и удержания', Icons.analytics),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
@@ -256,26 +341,60 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  Widget _buildStatsCard(ThemeProvider themeProvider, String title, List<Widget> children) {
+  Widget _buildStatCard(ThemeProvider themeProvider, String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: themeProvider.cardColor,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: themeProvider.textColor.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: themeProvider.textColor,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 30,
             ),
           ),
-          const SizedBox(height: 16),
-          ...children,
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: themeProvider.textSecondaryColor,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -310,26 +429,52 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  Widget _buildChartCard(ThemeProvider themeProvider, String title, String description) {
+  Widget _buildChartCard(ThemeProvider themeProvider, String title, String description, IconData icon) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: themeProvider.cardColor,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: themeProvider.textColor.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: themeProvider.textColor,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0C79FE).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  color: const Color(0xFF0C79FE),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             description,
             style: TextStyle(
@@ -339,18 +484,29 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ),
           const SizedBox(height: 16),
           Container(
-            height: 100,
+            height: 80,
             decoration: BoxDecoration(
               color: themeProvider.surfaceColor,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
-              child: Text(
-                'График будет здесь',
-                style: TextStyle(
-                  color: themeProvider.textSecondaryColor,
-                  fontSize: 14,
-                ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.bar_chart,
+                    color: themeProvider.textSecondaryColor,
+                    size: 32,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'График будет здесь',
+                    style: TextStyle(
+                      color: themeProvider.textSecondaryColor,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -552,7 +708,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     switch (role) {
       case 'admin':
         return Colors.red;
-      case 'moderator':
+      case 'manager':
         return Colors.orange;
       default:
         return Colors.blue;
@@ -563,8 +719,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     switch (role) {
       case 'admin':
         return Icons.admin_panel_settings;
-      case 'moderator':
-        return Icons.shield;
+      case 'manager':
+        return Icons.manage_accounts;
       default:
         return Icons.person;
     }
@@ -622,7 +778,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               ),
               items: const [
                 DropdownMenuItem(value: 'user', child: Text('Пользователь')),
-                DropdownMenuItem(value: 'moderator', child: Text('Модератор')),
+                DropdownMenuItem(value: 'manager', child: Text('Менеджер')),
                 DropdownMenuItem(value: 'admin', child: Text('Администратор')),
               ],
               onChanged: (value) => selectedRole = value!,
@@ -679,7 +835,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ),
           items: const [
             DropdownMenuItem(value: 'user', child: Text('Пользователь')),
-            DropdownMenuItem(value: 'moderator', child: Text('Модератор')),
+            DropdownMenuItem(value: 'manager', child: Text('Менеджер')),
             DropdownMenuItem(value: 'admin', child: Text('Администратор')),
           ],
           onChanged: (value) => selectedRole = value!,

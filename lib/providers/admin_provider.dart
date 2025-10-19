@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'auth_provider.dart';
 
 class AdminUser {
   final String id;
@@ -103,6 +104,7 @@ class AdminProvider extends ChangeNotifier {
   );
   bool _isLoading = false;
   bool _isAdmin = false;
+  AuthProvider? _authProvider;
 
   // Getters
   List<AdminUser> get users => _users;
@@ -116,7 +118,8 @@ class AdminProvider extends ChangeNotifier {
   }
 
   // Инициализация админ панели
-  Future<void> initialize() async {
+  Future<void> initialize({AuthProvider? authProvider}) async {
+    _authProvider = authProvider;
     _setLoading(true);
     await _loadUsersData();
     await _loadAppStats();
@@ -128,10 +131,26 @@ class AdminProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       
-      // Загружаем пользователей
-      final usersJson = prefs.getString('admin_users') ?? '[]';
+      // Загружаем всех пользователей из SharedPreferences
+      final usersJson = prefs.getString('all_users') ?? '[]';
       final usersList = json.decode(usersJson) as List;
-      _users = usersList.map((json) => AdminUser.fromJson(json)).toList();
+      
+      // Конвертируем в AdminUser
+      _users = usersList.map((userData) {
+        return AdminUser(
+          id: userData['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          name: userData['firstName'] != null && userData['lastName'] != null 
+              ? '${userData['firstName']} ${userData['lastName']}'
+              : userData['name'] ?? 'Пользователь',
+          email: userData['email'] ?? '',
+          role: userData['role'] ?? 'user',
+          createdAt: userData['createdAt'] != null 
+              ? DateTime.parse(userData['createdAt'])
+              : DateTime.now(),
+          isActive: userData['isActive'] ?? true,
+          permissions: _getDefaultPermissions(userData['role'] ?? 'user'),
+        );
+      }).toList();
 
       // Если нет пользователей, создаем демо данные
       if (_users.isEmpty) {
@@ -164,9 +183,9 @@ class AdminProvider extends ChangeNotifier {
       ),
       AdminUser(
         id: '2',
-        name: 'Модератор',
-        email: 'moderator@gmail.com',
-        role: 'moderator',
+        name: 'Менеджер',
+        email: 'manager@gmail.com',
+        role: 'manager',
         createdAt: DateTime.now().subtract(const Duration(days: 15)),
         isActive: true,
         permissions: {
@@ -275,7 +294,7 @@ class AdminProvider extends ChangeNotifier {
           'manageAds': true,
           'manageRoles': true,
         };
-      case 'moderator':
+      case 'manager':
         return {
           'manageUsers': false,
           'manageOrganizations': true,

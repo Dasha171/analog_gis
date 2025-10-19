@@ -77,9 +77,38 @@ class AuthProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('current_user', json.encode(user.toJson()));
+      
+      // Также сохраняем в список всех пользователей
+      await _addUserToAllUsers(user);
+      
       print('Пользователь сохранен в хранилище: ${user.fullName}');
     } catch (e) {
       print('Ошибка сохранения пользователя: $e');
+    }
+  }
+
+  /// Добавление пользователя в список всех пользователей
+  Future<void> _addUserToAllUsers(User user) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final allUsersJson = prefs.getString('all_users') ?? '[]';
+      final allUsersList = json.decode(allUsersJson) as List;
+      
+      // Проверяем, есть ли уже такой пользователь
+      final existingUserIndex = allUsersList.indexWhere((u) => u['email'] == user.email);
+      
+      if (existingUserIndex != -1) {
+        // Обновляем существующего пользователя
+        allUsersList[existingUserIndex] = user.toJson();
+      } else {
+        // Добавляем нового пользователя
+        allUsersList.add(user.toJson());
+      }
+      
+      await prefs.setString('all_users', json.encode(allUsersList));
+      print('Пользователь добавлен в общий список: ${user.email}');
+    } catch (e) {
+      print('Ошибка добавления пользователя в общий список: $e');
     }
   }
 

@@ -8,6 +8,7 @@ import 'favorites_screen.dart';
 import 'reviews_screen.dart';
 import 'visited_places_screen.dart';
 import 'photos_screen.dart';
+import 'friends_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -181,6 +182,24 @@ class ProfileScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(builder: (context) => const VisitedPlacesScreen()),
+                            );
+                          },
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Друзья
+                        _buildActionSection(
+                          context,
+                          themeProvider,
+                          userActionsProvider,
+                          'Друзья',
+                          Icons.people,
+                          userActionsProvider.friends.length,
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const FriendsScreen()),
                             );
                           },
                         ),

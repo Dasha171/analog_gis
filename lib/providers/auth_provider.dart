@@ -367,4 +367,15 @@ class AuthProvider extends ChangeNotifier {
   int getRemainingCodeTime(String email) {
     return _emailService.getRemainingTime(email);
   }
+
+  // Проверка, является ли пользователь администратором
+  bool get isAdmin {
+    return _currentUser?.email == 'admin@gmail.com';
+  }
+
+  // Получение роли пользователя
+  String get userRole {
+    if (isAdmin) return 'admin';
+    return 'user';
+  }
 }

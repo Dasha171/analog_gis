@@ -59,6 +59,7 @@ class UserActionsProvider extends ChangeNotifier {
   List<UserAction> _reviews = [];
   List<UserAction> _visitedPlaces = [];
   List<UserAction> _photos = [];
+  List<dynamic> _friends = [];
   bool _isLoading = false;
 
   // Getters
@@ -66,6 +67,7 @@ class UserActionsProvider extends ChangeNotifier {
   List<UserAction> get reviews => _reviews;
   List<UserAction> get visitedPlaces => _visitedPlaces;
   List<UserAction> get photos => _photos;
+  List<dynamic> get friends => _friends;
   bool get isLoading => _isLoading;
 
   // Инициализация

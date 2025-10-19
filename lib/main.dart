@@ -14,6 +14,7 @@ import 'providers/business_provider.dart';
 import 'providers/user_actions_provider.dart';
 import 'providers/friends_provider.dart';
 import 'providers/admin_provider.dart';
+import 'providers/advertisement_provider.dart';
 
 void main() {
   runApp(const AnalGisApp());
@@ -38,6 +39,7 @@ class AnalGisApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => UserActionsProvider()),
         ChangeNotifierProvider(create: (_) => FriendsProvider()),
         ChangeNotifierProvider(create: (_) => AdminProvider()),
+        ChangeNotifierProvider(create: (_) => AdvertisementProvider()),
       ],
       child: Consumer2<LocalizationProvider, ThemeProvider>(
         builder: (context, localizationProvider, themeProvider, child) {

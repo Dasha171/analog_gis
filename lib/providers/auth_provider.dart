@@ -402,9 +402,15 @@ class AuthProvider extends ChangeNotifier {
     return _currentUser?.email == 'admin@gmail.com';
   }
 
+  // Проверка, является ли пользователь менеджером
+  bool get isManager {
+    return _currentUser?.email == 'manager@gmail.com';
+  }
+
   // Получение роли пользователя
   String get userRole {
     if (isAdmin) return 'admin';
+    if (isManager) return 'manager';
     return 'user';
   }
 }

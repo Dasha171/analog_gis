@@ -20,7 +20,9 @@ import 'settings_screen.dart';
 import '../widgets/business_modal_widget.dart';
 import '../providers/user_actions_provider.dart';
 import '../providers/friends_provider.dart';
+import '../providers/advertisement_provider.dart';
 import 'admin_panel_screen.dart';
+import 'manager_panel_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -46,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context.read<AuthProvider>().loadUserSession();
     context.read<UserActionsProvider>().initialize();
     context.read<FriendsProvider>().initialize();
+    context.read<AdvertisementProvider>().initialize();
     });
   }
   
@@ -549,6 +552,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 
                 const SizedBox(height: 12),
                 
+                // Рекламные блоки
+                Consumer<AdvertisementProvider>(
+                  builder: (context, adProvider, child) {
+                    final ads = adProvider.approvedAdvertisements;
+                    if (ads.isNotEmpty) {
+                      return Column(
+                        children: [
+                          SizedBox(
+                            height: 120,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: ads.length,
+                              itemBuilder: (context, index) {
+                                final ad = ads[index];
+                                return Consumer<ThemeProvider>(
+                                  builder: (context, themeProvider, child) {
+                                    return _buildAdvertisementCard(context, themeProvider, adProvider, ad);
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+                
                 // Категории - 2 в ряд
                 Row(
                   children: [
@@ -632,6 +665,113 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
+    );
+  }
+  
+  Widget _buildAdvertisementCard(BuildContext context, ThemeProvider themeProvider, AdvertisementProvider adProvider, dynamic ad) {
+    return Container(
+      width: 200,
+      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: themeProvider.textColor.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () {
+            adProvider.incrementClicks(ad.id);
+            // Открываем ссылку
+            // TODO: Реализовать открытие ссылки
+          },
+          child: Stack(
+            children: [
+              // Изображение рекламы
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: NetworkImage(ad.imageUrl),
+                    fit: BoxFit.cover,
+                    onError: (exception, stackTrace) {
+                      // Обработка ошибки загрузки изображения
+                    },
+                  ),
+                ),
+                child: ad.imageUrl.isEmpty
+                    ? Container(
+                        color: themeProvider.surfaceColor,
+                        child: Icon(
+                          Icons.image,
+                          color: themeProvider.textSecondaryColor,
+                          size: 48,
+                        ),
+                      )
+                    : null,
+              ),
+              
+              // Градиент для лучшей читаемости текста
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.7),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Заголовок рекламы
+              Positioned(
+                bottom: 8,
+                left: 8,
+                right: 8,
+                child: Text(
+                  ad.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              
+              // Индикатор рекламы
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0C79FE),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'РЕКЛАМА',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
   
@@ -786,6 +926,22 @@ extension _HomeScreenStateMenu on _HomeScreenState {
                             Navigator.push(
                               context,
                               MaterialPageRoute(builder: (context) => const AdminPanelScreen()),
+                            );
+                          });
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                    
+                    // Панель менеджера (только для менеджеров)
+                    Consumer<AuthProvider>(
+                      builder: (context, authProvider, child) {
+                        if (authProvider.isManager) {
+                          return _buildMenuItem(Icons.manage_accounts, 'Панель менеджера', () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ManagerPanelScreen()),
                             );
                           });
                         }

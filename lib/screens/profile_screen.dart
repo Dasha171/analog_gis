@@ -222,6 +222,36 @@ class ProfileScreen extends StatelessWidget {
                           },
                         ),
                         
+                        const SizedBox(height: 24),
+                        
+                        // Кнопка выхода
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              _showLogoutDialog(context, themeProvider, authProvider);
+                            },
+                            icon: const Icon(Icons.logout, color: Colors.white),
+                            label: const Text(
+                              'Выйти из аккаунта',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                          ),
+                        ),
+                        
                         const SizedBox(height: 100), // Отступ для нижнего меню
                       ],
                     ),
@@ -430,7 +460,8 @@ class ProfileScreen extends StatelessWidget {
             title: 'Выйти',
             subtitle: 'Завершить сессию',
             onTap: () {
-              _showLogoutDialog(context);
+              final authProvider = context.read<AuthProvider>();
+              _showLogoutDialog(context, themeProvider, authProvider);
             },
             textColor: Colors.red,
             themeProvider: themeProvider,
@@ -521,43 +552,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
   
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF212121),
-        title: const Text(
-          'Выйти',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Вы действительно хотите выйти из аккаунта?',
-          style: TextStyle(color: Color(0xFF6C6C6C)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Отмена',
-              style: TextStyle(color: Color(0xFF6C6C6C)),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              final authProvider = context.read<AuthProvider>();
-              await authProvider.signOut();
-              Navigator.pop(context); // Возвращаемся на главный экран
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text('Выйти'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildActionSection(
     BuildContext context,
@@ -636,5 +630,63 @@ class ProfileScreen extends StatelessWidget {
     if (count == 1) return 'место';
     if (count >= 2 && count <= 4) return 'места';
     return 'мест';
+  }
+
+  void _showLogoutDialog(BuildContext context, ThemeProvider themeProvider, AuthProvider authProvider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: themeProvider.cardColor,
+        title: Text(
+          'Выйти из аккаунта',
+          style: TextStyle(
+            color: themeProvider.textColor,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'Вы уверены, что хотите выйти из аккаунта?',
+          style: TextStyle(
+            color: themeProvider.textColor,
+            fontSize: 16,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Отмена',
+              style: TextStyle(
+                color: themeProvider.textSecondaryColor,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context); // Закрываем диалог
+              await authProvider.signOut();
+              // Навигация к главному экрану
+              Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Выйти',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

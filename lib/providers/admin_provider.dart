@@ -146,7 +146,7 @@ class AdminProvider extends ChangeNotifier {
           id: userData['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
           name: userData['firstName'] != null && userData['lastName'] != null 
               ? '${userData['firstName']} ${userData['lastName']}'
-              : userData['name'] ?? 'Пользователь',
+              : userData['name'] ?? userData['fullName'] ?? 'Пользователь',
           email: userData['email'] ?? '',
           role: userData['role'] ?? 'user',
           createdAt: userData['createdAt'] != null 
@@ -154,6 +154,7 @@ class AdminProvider extends ChangeNotifier {
               : DateTime.now(),
           isActive: userData['isActive'] ?? true,
           permissions: _getDefaultPermissions(userData['role'] ?? 'user'),
+          managedCities: List<String>.from(userData['managedCities'] ?? []),
         );
       }).toList();
 
@@ -390,6 +391,12 @@ class AdminProvider extends ChangeNotifier {
     } catch (e) {
       print('Ошибка обновления статистики: $e');
     }
+  }
+
+  // Принудительное обновление списка пользователей
+  Future<void> refreshUsers() async {
+    await _loadUsersData();
+    notifyListeners();
   }
 
   // Обновление городов менеджера

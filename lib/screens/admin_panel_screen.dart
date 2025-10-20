@@ -87,12 +87,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                               ),
                             ),
                           ),
-                          IconButton(
-                            icon: Icon(Icons.refresh, color: themeProvider.textColor),
-                            onPressed: () {
-                              adminProvider.updateStats();
-                            },
-                          ),
+                           IconButton(
+                             icon: Icon(Icons.refresh, color: themeProvider.textColor),
+                             onPressed: () {
+                               adminProvider.updateStats();
+                               adminProvider.refreshUsers();
+                             },
+                           ),
                         ],
                       ),
                     ),

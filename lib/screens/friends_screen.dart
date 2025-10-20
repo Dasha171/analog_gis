@@ -13,64 +13,101 @@ class FriendsScreen extends StatelessWidget {
       builder: (context, themeProvider, friendsProvider, child) {
         return Scaffold(
           backgroundColor: themeProvider.backgroundColor,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: Icon(Icons.arrow_back, color: themeProvider.textColor),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: Text(
-              'Друзья',
-              style: TextStyle(
-                color: themeProvider.textColor,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+          body: Column(
+            children: [
+              // Кастомный AppBar без белой полосы
+              Container(
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 16,
+                  left: 24,
+                  right: 24,
+                  bottom: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: themeProvider.backgroundColor,
+                  boxShadow: [
+                    BoxShadow(
+                      color: themeProvider.textColor.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.arrow_back, color: themeProvider.textColor),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    Expanded(
+                      child: Text(
+                        'Друзья',
+                        style: TextStyle(
+                          color: themeProvider.textColor,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.person_add, color: themeProvider.textColor),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AddFriendScreen()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.person_add, color: themeProvider.textColor),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AddFriendScreen()),
-                  );
-                },
+              
+              // Содержимое с табами
+              Expanded(
+                child: DefaultTabController(
+                  length: 3,
+                  child: Column(
+                    children: [
+                      // Табы с фоном #151515
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF151515),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: TabBar(
+                          indicator: BoxDecoration(
+                            color: const Color(0xFF0C79FE),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          dividerColor: Colors.transparent,
+                          labelColor: Colors.white,
+                          unselectedLabelColor: themeProvider.textSecondaryColor,
+                          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                          tabs: const [
+                            Tab(text: 'Друзья'),
+                            Tab(text: 'Приглашения'),
+                            Tab(text: 'Отправленные'),
+                          ],
+                        ),
+                      ),
+                      
+                      // Содержимое табов
+                      Expanded(
+                        child: TabBarView(
+                          children: [
+                            _buildFriendsTab(context, themeProvider, friendsProvider),
+                            _buildInvitationsTab(context, themeProvider, friendsProvider),
+                            _buildSentTab(context, themeProvider, friendsProvider),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
-          ),
-          body: DefaultTabController(
-            length: 3,
-            child: Column(
-              children: [
-                // Табы
-                Container(
-                  color: themeProvider.cardColor,
-                  child: TabBar(
-                    indicatorColor: const Color(0xFF0C79FE),
-                    labelColor: themeProvider.textColor,
-                    unselectedLabelColor: themeProvider.textSecondaryColor,
-                    tabs: const [
-                      Tab(text: 'Друзья'),
-                      Tab(text: 'Приглашения'),
-                      Tab(text: 'Отправленные'),
-                    ],
-                  ),
-                ),
-                
-                // Содержимое табов
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      _buildFriendsTab(context, themeProvider, friendsProvider),
-                      _buildInvitationsTab(context, themeProvider, friendsProvider),
-                      _buildSentTab(context, themeProvider, friendsProvider),
-                    ],
-                  ),
-                ),
-              ],
-            ),
           ),
         );
       },

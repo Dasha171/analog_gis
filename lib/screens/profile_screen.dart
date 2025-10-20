@@ -134,93 +134,99 @@ class ProfileScreen extends StatelessWidget {
                     
                         const SizedBox(height: 24),
                         
-                        // Избранное
-                        _buildActionSection(
-                          context,
-                          themeProvider,
-                          userActionsProvider,
-                          'Избранное',
-                          Icons.favorite,
-                          userActionsProvider.favorites.length,
-                          () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const FavoritesScreen()),
-                            );
-                          },
-                        ),
+                        // Для обычных пользователей показываем действия
+                        if (!authProvider.isAdmin) ...[
+                          // Избранное
+                          _buildActionSection(
+                            context,
+                            themeProvider,
+                            userActionsProvider,
+                            'Избранное',
+                            Icons.favorite,
+                            userActionsProvider.favorites.length,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const FavoritesScreen()),
+                              );
+                            },
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          // Мои отзывы
+                          _buildActionSection(
+                            context,
+                            themeProvider,
+                            userActionsProvider,
+                            'Мои отзывы',
+                            Icons.rate_review,
+                            userActionsProvider.reviews.length,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const ReviewsScreen()),
+                              );
+                            },
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          // Посещенные места
+                          _buildActionSection(
+                            context,
+                            themeProvider,
+                            userActionsProvider,
+                            'Посещенные места',
+                            Icons.location_on,
+                            userActionsProvider.visitedPlaces.length,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const VisitedPlacesScreen()),
+                              );
+                            },
+                          ),
+                        ],
                         
                         const SizedBox(height: 16),
                         
-                        // Мои отзывы
-                        _buildActionSection(
-                          context,
-                          themeProvider,
-                          userActionsProvider,
-                          'Мои отзывы',
-                          Icons.rate_review,
-                          userActionsProvider.reviews.length,
-                          () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const ReviewsScreen()),
-                            );
-                          },
-                        ),
-                        
-                        const SizedBox(height: 16),
-                        
-                        // Посещенные места
-                        _buildActionSection(
-                          context,
-                          themeProvider,
-                          userActionsProvider,
-                          'Посещенные места',
-                          Icons.location_on,
-                          userActionsProvider.visitedPlaces.length,
-                          () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const VisitedPlacesScreen()),
-                            );
-                          },
-                        ),
-                        
-                        const SizedBox(height: 16),
-                        
-                        // Друзья
-                        _buildActionSection(
-                          context,
-                          themeProvider,
-                          userActionsProvider,
-                          'Друзья',
-                          Icons.people,
-                          userActionsProvider.friends.length,
-                          () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const FriendsScreen()),
-                            );
-                          },
-                        ),
-                        
-                        const SizedBox(height: 16),
-                        
-                        // Фото
-                        _buildActionSection(
-                          context,
-                          themeProvider,
-                          userActionsProvider,
-                          'Фото',
-                          Icons.photo_library,
-                          userActionsProvider.photos.length,
-                          () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const PhotosScreen()),
-                            );
-                          },
-                        ),
+                        // Для обычных пользователей показываем друзей и фото
+                        if (!authProvider.isAdmin) ...[
+                          // Друзья
+                          _buildActionSection(
+                            context,
+                            themeProvider,
+                            userActionsProvider,
+                            'Друзья',
+                            Icons.people,
+                            userActionsProvider.friends.length,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const FriendsScreen()),
+                              );
+                            },
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          // Фото
+                          _buildActionSection(
+                            context,
+                            themeProvider,
+                            userActionsProvider,
+                            'Фото',
+                            Icons.photo_library,
+                            userActionsProvider.photos.length,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const PhotosScreen()),
+                              );
+                            },
+                          ),
+                        ],
                         
                         const SizedBox(height: 24),
                         

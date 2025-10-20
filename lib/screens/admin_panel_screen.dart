@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/admin_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/advertisement_provider.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});
@@ -18,13 +19,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = context.read<AuthProvider>();
       context.read<AdminProvider>().initialize(authProvider: authProvider);
+      context.read<AdvertisementProvider>().initialize();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer3<ThemeProvider, AdminProvider, AuthProvider>(
-      builder: (context, themeProvider, adminProvider, authProvider, child) {
+    return Consumer4<ThemeProvider, AdminProvider, AuthProvider, AdvertisementProvider>(
+      builder: (context, themeProvider, adminProvider, authProvider, adProvider, child) {
         if (!authProvider.isAdmin) {
           return Scaffold(
             backgroundColor: themeProvider.backgroundColor,
@@ -101,9 +103,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         length: 4,
                         child: Column(
                           children: [
-                            // Кастомные табы
+                            // Кастомные табы на всю ширину
                             Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 24),
+                              margin: const EdgeInsets.symmetric(horizontal: 16),
                               decoration: BoxDecoration(
                                 color: themeProvider.cardColor,
                                 borderRadius: BorderRadius.circular(12),
@@ -131,10 +133,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             Expanded(
                               child: TabBarView(
                                 children: [
-                                  _buildStatsTab(context, themeProvider, adminProvider),
-                                  _buildUsersTab(context, themeProvider, adminProvider),
-                                  _buildOrganizationsTab(context, themeProvider, adminProvider),
-                                  _buildSettingsTab(context, themeProvider, adminProvider),
+                                  _buildStatsTab(context, themeProvider, adminProvider, adProvider),
+                                  _buildUsersTab(context, themeProvider, adminProvider, adProvider),
+                                  _buildOrganizationsTab(context, themeProvider, adminProvider, adProvider),
+                                  _buildSettingsTab(context, themeProvider, adminProvider, adProvider),
                                 ],
                               ),
                             ),
@@ -149,7 +151,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  Widget _buildStatsTab(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider) {
+  Widget _buildStatsTab(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider, AdvertisementProvider adProvider) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -180,10 +182,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 children: [
                   _buildStatCard(themeProvider, 'Всего пользователей', '${adminProvider.appStats.totalUsers}', Icons.people, const Color(0xFF0C79FE)),
                   _buildStatCard(themeProvider, 'Активных пользователей', '${adminProvider.appStats.activeUsers}', Icons.person, Colors.green),
-                  _buildStatCard(themeProvider, 'Организаций', '${adminProvider.appStats.totalOrganizations}', Icons.business, Colors.orange),
-                  _buildStatCard(themeProvider, 'Отзывов', '${adminProvider.appStats.totalReviews}', Icons.rate_review, Colors.purple),
-                  _buildStatCard(themeProvider, 'Фотографий', '${adminProvider.appStats.totalPhotos}', Icons.photo_library, Colors.pink),
-                  _buildStatCard(themeProvider, 'Дружеских связей', '${adminProvider.appStats.totalFriendships}', Icons.favorite, Colors.red),
+                  _buildStatCard(themeProvider, 'Менеджеров', '${adminProvider.users.where((u) => u.role == 'manager').length}', Icons.manage_accounts, Colors.orange),
+                  _buildStatCard(themeProvider, 'Организаций', '${adminProvider.appStats.totalOrganizations}', Icons.business, Colors.purple),
+                  _buildStatCard(themeProvider, 'Рекламных объявлений', '${adProvider.advertisements.length}', Icons.campaign, Colors.pink),
+                  _buildStatCard(themeProvider, 'Одобренных объявлений', '${adProvider.approvedAdvertisements.length}', Icons.check_circle, Colors.teal),
                 ],
               );
             },
@@ -226,7 +228,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  Widget _buildUsersTab(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider) {
+  Widget _buildUsersTab(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider, AdvertisementProvider adProvider) {
     return Column(
       children: [
         // Кнопка добавления пользователя
@@ -265,7 +267,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  Widget _buildOrganizationsTab(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider) {
+  Widget _buildOrganizationsTab(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider, AdvertisementProvider adProvider) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -309,12 +311,28 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  Widget _buildSettingsTab(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider) {
+  Widget _buildSettingsTab(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider, AdvertisementProvider adProvider) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           _buildSettingsCard(
+            themeProvider,
+            'Управление городами',
+            'Добавлять и редактировать города для менеджеров',
+            Icons.location_city,
+            () => _showCityManagementDialog(context, themeProvider, adProvider),
+          ),
+          const SizedBox(height: 16),
+          _buildSettingsCard(
+            themeProvider,
+            'Управление рекламой',
+            'Просматривать и модератировать рекламные объявления',
+            Icons.campaign,
+            () => _showAdvertisementManagementDialog(context, themeProvider, adProvider),
+          ),
+          const SizedBox(height: 16),
+          _buildSettingsCardWithChildren(
             themeProvider,
             'Системные настройки',
             [
@@ -327,7 +345,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           
           const SizedBox(height: 16),
           
-          _buildSettingsCard(
+          _buildSettingsCardWithChildren(
             themeProvider,
             'Реклама и монетизация',
             [
@@ -635,7 +653,74 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  Widget _buildSettingsCard(ThemeProvider themeProvider, String title, List<Widget> children) {
+  Widget _buildSettingsCard(ThemeProvider themeProvider, String title, String subtitle, IconData icon, VoidCallback onTap) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: themeProvider.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: themeProvider.textColor.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Row(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0C79FE).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: const Color(0xFF0C79FE),
+                size: 30,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: themeProvider.textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: themeProvider.textSecondaryColor,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: themeProvider.textSecondaryColor,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsCardWithChildren(ThemeProvider themeProvider, String title, List<Widget> children) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -855,5 +940,379 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         ],
       ),
     );
+  }
+
+  // Диалог управления городами
+  void _showCityManagementDialog(BuildContext context, ThemeProvider themeProvider, AdvertisementProvider adProvider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: themeProvider.cardColor,
+        title: Text(
+          'Управление городами',
+          style: TextStyle(color: themeProvider.textColor),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: ListView.builder(
+            itemCount: adProvider.cities.length,
+            itemBuilder: (context, index) {
+              final city = adProvider.cities[index];
+              return ListTile(
+                leading: Icon(Icons.location_city, color: themeProvider.textColor),
+                title: Text(
+                  city.name,
+                  style: TextStyle(color: themeProvider.textColor),
+                ),
+                subtitle: Text(
+                  city.country,
+                  style: TextStyle(color: themeProvider.textSecondaryColor),
+                ),
+                trailing: IconButton(
+                  icon: Icon(Icons.delete, color: Colors.red),
+                  onPressed: () {
+                    // TODO: Реализовать удаление города
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Закрыть',
+              style: TextStyle(color: themeProvider.textSecondaryColor),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showAddCityDialog(context, themeProvider, adProvider);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0C79FE),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Добавить город'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Диалог добавления города
+  void _showAddCityDialog(BuildContext context, ThemeProvider themeProvider, AdvertisementProvider adProvider) {
+    final nameController = TextEditingController();
+    final countryController = TextEditingController();
+    final latController = TextEditingController();
+    final lngController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: themeProvider.cardColor,
+        title: Text(
+          'Добавить город',
+          style: TextStyle(color: themeProvider.textColor),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              style: TextStyle(color: themeProvider.textColor),
+              decoration: InputDecoration(
+                labelText: 'Название города',
+                labelStyle: TextStyle(color: themeProvider.textSecondaryColor),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: countryController,
+              style: TextStyle(color: themeProvider.textColor),
+              decoration: InputDecoration(
+                labelText: 'Страна',
+                labelStyle: TextStyle(color: themeProvider.textSecondaryColor),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: latController,
+                    style: TextStyle(color: themeProvider.textColor),
+                    decoration: InputDecoration(
+                      labelText: 'Широта',
+                      labelStyle: TextStyle(color: themeProvider.textSecondaryColor),
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: lngController,
+                    style: TextStyle(color: themeProvider.textColor),
+                    decoration: InputDecoration(
+                      labelText: 'Долгота',
+                      labelStyle: TextStyle(color: themeProvider.textSecondaryColor),
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Отмена',
+              style: TextStyle(color: themeProvider.textSecondaryColor),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.isNotEmpty && 
+                  countryController.text.isNotEmpty &&
+                  latController.text.isNotEmpty &&
+                  lngController.text.isNotEmpty) {
+                await adProvider.addCity(
+                  name: nameController.text,
+                  country: countryController.text,
+                  latitude: double.parse(latController.text),
+                  longitude: double.parse(lngController.text),
+                );
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Город добавлен!')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0C79FE),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Добавить'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Диалог управления рекламой
+  void _showAdvertisementManagementDialog(BuildContext context, ThemeProvider themeProvider, AdvertisementProvider adProvider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: themeProvider.cardColor,
+        title: Text(
+          'Управление рекламой',
+          style: TextStyle(color: themeProvider.textColor),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 500,
+          child: DefaultTabController(
+            length: 4,
+            child: Column(
+              children: [
+                TabBar(
+                  isScrollable: true,
+                  labelColor: const Color(0xFF0C79FE),
+                  unselectedLabelColor: themeProvider.textSecondaryColor,
+                  tabs: const [
+                    Tab(text: 'Все'),
+                    Tab(text: 'На рассмотрении'),
+                    Tab(text: 'Одобренные'),
+                    Tab(text: 'Отклоненные'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _buildAdList(context, themeProvider, adProvider, null),
+                      _buildAdList(context, themeProvider, adProvider, 'pending'),
+                      _buildAdList(context, themeProvider, adProvider, 'approved'),
+                      _buildAdList(context, themeProvider, adProvider, 'rejected'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Закрыть',
+              style: TextStyle(color: themeProvider.textSecondaryColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Список рекламных объявлений
+  Widget _buildAdList(BuildContext context, ThemeProvider themeProvider, AdvertisementProvider adProvider, String? status) {
+    List<dynamic> ads = status == null 
+        ? adProvider.advertisements 
+        : adProvider.advertisements.where((ad) => ad.status == status).toList();
+
+    return ListView.builder(
+      itemCount: ads.length,
+      itemBuilder: (context, index) {
+        final ad = ads[index];
+        return Card(
+          color: themeProvider.surfaceColor,
+          child: ListTile(
+            leading: Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                image: DecorationImage(
+                  image: NetworkImage(ad.imageUrl),
+                  fit: BoxFit.cover,
+                  onError: (exception, stackTrace) {
+                    // Обработка ошибки
+                  },
+                ),
+              ),
+            ),
+            title: Text(
+              ad.title,
+              style: TextStyle(color: themeProvider.textColor),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ad.cityName,
+                  style: TextStyle(color: themeProvider.textSecondaryColor),
+                ),
+                Text(
+                  'Менеджер: ${ad.managerName}',
+                  style: TextStyle(color: themeProvider.textSecondaryColor),
+                ),
+                Text(
+                  'Статус: ${_getStatusText(ad.status)}',
+                  style: TextStyle(
+                    color: _getStatusColor(ad.status),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            trailing: ad.status == 'pending' ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.check, color: Colors.green),
+                  onPressed: () {
+                    adProvider.approveAdvertisement(ad.id);
+                    Navigator.pop(context);
+                  },
+                ),
+                IconButton(
+                  icon: Icon(Icons.close, color: Colors.red),
+                  onPressed: () {
+                    _showRejectDialog(context, themeProvider, adProvider, ad.id);
+                  },
+                ),
+              ],
+            ) : null,
+          ),
+        );
+      },
+    );
+  }
+
+  // Диалог отклонения рекламы
+  void _showRejectDialog(BuildContext context, ThemeProvider themeProvider, AdvertisementProvider adProvider, String adId) {
+    final reasonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: themeProvider.cardColor,
+        title: Text(
+          'Отклонить рекламу',
+          style: TextStyle(color: themeProvider.textColor),
+        ),
+        content: TextField(
+          controller: reasonController,
+          style: TextStyle(color: themeProvider.textColor),
+          decoration: InputDecoration(
+            labelText: 'Причина отклонения',
+            labelStyle: TextStyle(color: themeProvider.textSecondaryColor),
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Отмена',
+              style: TextStyle(color: themeProvider.textSecondaryColor),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              adProvider.rejectAdvertisement(adId, reasonController.text);
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Отклонить'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'approved':
+        return Colors.green;
+      case 'pending':
+        return Colors.orange;
+      case 'rejected':
+        return Colors.red;
+      case 'blocked':
+        return Colors.grey;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  String _getStatusText(String status) {
+    switch (status) {
+      case 'approved':
+        return 'Одобрено';
+      case 'pending':
+        return 'На рассмотрении';
+      case 'rejected':
+        return 'Отклонено';
+      case 'blocked':
+        return 'Заблокировано';
+      default:
+        return 'Неизвестно';
+    }
   }
 }

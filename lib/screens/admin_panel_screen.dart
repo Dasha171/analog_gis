@@ -941,7 +941,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             style: TextStyle(color: themeProvider.textColor),
           ),
           content: SizedBox(
-            width: double.maxFinite,
+            width: 400, // Фиксированная ширина
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -973,26 +973,33 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     'Выберите города для управления:',
                     style: TextStyle(
                       color: themeProvider.textColor,
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 8),
                   SizedBox(
-                    height: 200,
+                    height: 180, // Уменьшенная высота
                     child: ListView.builder(
                       itemCount: adProvider.cities.length,
                       itemBuilder: (context, index) {
                         final city = adProvider.cities[index];
                         final isSelected = selectedCities.contains(city.id);
                         return CheckboxListTile(
+                          dense: true, // Более компактные элементы
                           title: Text(
                             city.name,
-                            style: TextStyle(color: themeProvider.textColor),
+                            style: TextStyle(
+                              color: themeProvider.textColor,
+                              fontSize: 13,
+                            ),
                           ),
                           subtitle: Text(
                             city.country,
-                            style: TextStyle(color: themeProvider.textSecondaryColor),
+                            style: TextStyle(
+                              color: themeProvider.textSecondaryColor,
+                              fontSize: 11,
+                            ),
                           ),
                           value: isSelected,
                           onChanged: (value) {
@@ -1428,24 +1435,24 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             style: TextStyle(color: themeProvider.textColor),
           ),
           content: SizedBox(
-            width: double.maxFinite,
-            height: 400,
+            width: 400, // Фиксированная ширина
+            height: 350, // Уменьшенная высота
             child: Column(
               children: [
                 Text(
                   'Менеджер: ${user.name}',
                   style: TextStyle(
                     color: themeProvider.textColor,
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Text(
                   'Выберите города для управления:',
                   style: TextStyle(
                     color: themeProvider.textColor,
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1456,13 +1463,20 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       final city = adProvider.cities[index];
                       final isSelected = selectedCities.contains(city.id);
                       return CheckboxListTile(
+                        dense: true, // Более компактные элементы
                         title: Text(
                           city.name,
-                          style: TextStyle(color: themeProvider.textColor),
+                          style: TextStyle(
+                            color: themeProvider.textColor,
+                            fontSize: 13,
+                          ),
                         ),
                         subtitle: Text(
                           city.country,
-                          style: TextStyle(color: themeProvider.textSecondaryColor),
+                          style: TextStyle(
+                            color: themeProvider.textSecondaryColor,
+                            fontSize: 11,
+                          ),
                         ),
                         value: isSelected,
                         onChanged: (value) {

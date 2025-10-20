@@ -405,7 +405,7 @@ class AuthProvider extends ChangeNotifier {
 
   // Проверка, является ли пользователь менеджером
   bool get isManager {
-    return _currentUser?.email == 'manager@gmail.com';
+    return _currentUser?.email == 'manager@gmail.com' || _currentUser?.email == 'maneger@gmail.com';
   }
 
   // Получение роли пользователя

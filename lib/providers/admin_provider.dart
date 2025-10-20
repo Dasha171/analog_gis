@@ -207,6 +207,21 @@ class AdminProvider extends ChangeNotifier {
           'manageRoles': false,
         },
       ),
+      AdminUser(
+        id: '3',
+        name: 'Менеджер',
+        email: 'maneger@gmail.com',
+        role: 'manager',
+        createdAt: DateTime.now().subtract(const Duration(days: 10)),
+        isActive: true,
+        permissions: {
+          'manageUsers': false,
+          'manageOrganizations': true,
+          'viewStats': true,
+          'manageAds': false,
+          'manageRoles': false,
+        },
+      ),
     ];
     await _saveUsersData();
   }

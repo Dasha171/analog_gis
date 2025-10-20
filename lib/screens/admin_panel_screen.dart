@@ -103,29 +103,37 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         length: 4,
                         child: Column(
                           children: [
-                            // Кастомные табы на всю ширину
+                            // Кастомные табы с адаптивным дизайном
                             Container(
                               margin: const EdgeInsets.symmetric(horizontal: 8),
                               decoration: BoxDecoration(
-                                color: themeProvider.cardColor,
+                                color: const Color(0xFF151515),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: TabBar(
-                                indicator: BoxDecoration(
-                                  color: const Color(0xFF0C79FE),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                indicatorSize: TabBarIndicatorSize.tab,
-                                dividerColor: Colors.transparent,
-                                labelColor: Colors.white,
-                                unselectedLabelColor: themeProvider.textSecondaryColor,
-                                labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                                tabs: const [
-                                  Tab(text: 'Статистика'),
-                                  Tab(text: 'Пользователи'),
-                                  Tab(text: 'Организации'),
-                                  Tab(text: 'Настройки'),
-                                ],
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final isLargeScreen = constraints.maxWidth > 800;
+                                  return TabBar(
+                                    indicator: BoxDecoration(
+                                      color: const Color(0xFF0C79FE),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    indicatorSize: TabBarIndicatorSize.tab,
+                                    dividerColor: Colors.transparent,
+                                    labelColor: Colors.white,
+                                    unselectedLabelColor: themeProvider.textSecondaryColor,
+                                    labelStyle: TextStyle(
+                                      fontWeight: FontWeight.bold, 
+                                      fontSize: isLargeScreen ? 16 : 12
+                                    ),
+                                    tabs: const [
+                                      Tab(text: 'Статистика'),
+                                      Tab(text: 'Пользователи'),
+                                      Tab(text: 'Организации'),
+                                      Tab(text: 'Настройки'),
+                                    ],
+                                  );
+                                },
                               ),
                             ),
                             
@@ -168,24 +176,25 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ),
           const SizedBox(height: 20),
           
-          // Адаптивная сетка статистики
+          // Компактная сетка статистики
           LayoutBuilder(
             builder: (context, constraints) {
-              final crossAxisCount = constraints.maxWidth > 800 ? 2 : 1;
+              final isLargeScreen = constraints.maxWidth > 800;
+              final crossAxisCount = isLargeScreen ? 3 : 2;
               return GridView.count(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 2.5,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: isLargeScreen ? 3.5 : 2.8,
                 children: [
-                  _buildStatCard(themeProvider, 'Всего пользователей', '${adminProvider.appStats.totalUsers}', Icons.people, const Color(0xFF0C79FE)),
-                  _buildStatCard(themeProvider, 'Активных пользователей', '${adminProvider.appStats.activeUsers}', Icons.person, Colors.green),
-                  _buildStatCard(themeProvider, 'Менеджеров', '${adminProvider.users.where((u) => u.role == 'manager').length}', Icons.manage_accounts, Colors.orange),
-                  _buildStatCard(themeProvider, 'Организаций', '${adminProvider.appStats.totalOrganizations}', Icons.business, Colors.purple),
-                  _buildStatCard(themeProvider, 'Рекламных объявлений', '${adProvider.advertisements.length}', Icons.campaign, Colors.pink),
-                  _buildStatCard(themeProvider, 'Одобренных объявлений', '${adProvider.approvedAdvertisements.length}', Icons.check_circle, Colors.teal),
+                  _buildStatCard(themeProvider, 'Пользователи', '${adminProvider.appStats.totalUsers}', Icons.people, const Color(0xFF0C79FE)),
+                  _buildStatCard(themeProvider, 'Активные', '${adminProvider.appStats.activeUsers}', Icons.person, Colors.green),
+                  _buildStatCard(themeProvider, 'Менеджеры', '${adminProvider.users.where((u) => u.role == 'manager').length}', Icons.manage_accounts, Colors.orange),
+                  _buildStatCard(themeProvider, 'Организации', '${adminProvider.appStats.totalOrganizations}', Icons.business, Colors.purple),
+                  _buildStatCard(themeProvider, 'Реклама', '${adProvider.advertisements.length}', Icons.campaign, Colors.pink),
+                  _buildStatCard(themeProvider, 'Одобрено', '${adProvider.approvedAdvertisements.length}', Icons.check_circle, Colors.teal),
                 ],
               );
             },
@@ -231,20 +240,31 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   Widget _buildUsersTab(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider, AdvertisementProvider adProvider) {
     return Column(
       children: [
-        // Кнопка добавления пользователя
+        // Заголовок с кнопкой добавления
         Container(
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _showAddUserDialog(context, themeProvider, adminProvider),
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('Добавить пользователя'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0C79FE),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  'Пользователи (${adminProvider.users.length})',
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _showAddUserDialog(context, themeProvider, adminProvider),
+                icon: const Icon(Icons.person_add, size: 18),
+                label: const Text('Добавить'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0C79FE),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
               ),
@@ -361,53 +381,53 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   Widget _buildStatCard(ThemeProvider themeProvider, String title, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: themeProvider.cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: themeProvider.textColor.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: themeProvider.textColor.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
               color: color,
-              size: 30,
+              size: 24,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  title,
-                  style: TextStyle(
-                    color: themeProvider.textSecondaryColor,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
                   value,
                   style: TextStyle(
                     color: themeProvider.textColor,
-                    fontSize: 24,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: themeProvider.textSecondaryColor,
+                    fontSize: 12,
                   ),
                 ),
               ],
@@ -913,40 +933,109 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: themeProvider.cardColor,
-        title: Text(
-          'Изменить роль',
-          style: TextStyle(color: themeProvider.textColor),
-        ),
-        content: DropdownButtonFormField<String>(
-          value: selectedRole,
-          decoration: InputDecoration(
-            labelText: 'Роль',
-            labelStyle: TextStyle(color: themeProvider.textSecondaryColor),
-            filled: true,
-            fillColor: themeProvider.surfaceColor,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: themeProvider.cardColor,
+          title: Text(
+            'Изменить роль',
+            style: TextStyle(color: themeProvider.textColor),
           ),
-          items: const [
-            DropdownMenuItem(value: 'user', child: Text('Пользователь')),
-            DropdownMenuItem(value: 'manager', child: Text('Менеджер')),
-            DropdownMenuItem(value: 'admin', child: Text('Администратор')),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: selectedRole,
+                  decoration: InputDecoration(
+                    labelText: 'Роль',
+                    labelStyle: TextStyle(color: themeProvider.textSecondaryColor),
+                    filled: true,
+                    fillColor: themeProvider.surfaceColor,
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'user', child: Text('Пользователь')),
+                    DropdownMenuItem(value: 'manager', child: Text('Менеджер')),
+                    DropdownMenuItem(value: 'admin', child: Text('Администратор')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      selectedRole = value!;
+                      if (selectedRole != 'manager') {
+                        selectedCities.clear();
+                      }
+                    });
+                  },
+                ),
+                if (selectedRole == 'manager') ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Выберите города для управления:',
+                    style: TextStyle(
+                      color: themeProvider.textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 200,
+                    child: ListView.builder(
+                      itemCount: adProvider.cities.length,
+                      itemBuilder: (context, index) {
+                        final city = adProvider.cities[index];
+                        final isSelected = selectedCities.contains(city.id);
+                        return CheckboxListTile(
+                          title: Text(
+                            city.name,
+                            style: TextStyle(color: themeProvider.textColor),
+                          ),
+                          subtitle: Text(
+                            city.country,
+                            style: TextStyle(color: themeProvider.textSecondaryColor),
+                          ),
+                          value: isSelected,
+                          onChanged: (value) {
+                            setState(() {
+                              if (value == true) {
+                                selectedCities.add(city.id);
+                              } else {
+                                selectedCities.remove(city.id);
+                              }
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Отмена', style: TextStyle(color: themeProvider.textSecondaryColor)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                adminProvider.updateUserRole(user.id, selectedRole);
+                if (selectedRole == 'manager') {
+                  adminProvider.updateManagerCities(user.id, selectedCities);
+                }
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Роль и города обновлены!')),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0C79FE),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Сохранить'),
+            ),
           ],
-          onChanged: (value) => selectedRole = value!,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Отмена', style: TextStyle(color: themeProvider.textSecondaryColor)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              adminProvider.updateUserRole(user.id, selectedRole);
-              Navigator.pop(context);
-            },
-            child: const Text('Сохранить'),
-          ),
-        ],
       ),
     );
   }

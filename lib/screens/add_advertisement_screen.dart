@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/advertisement_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/admin_provider.dart';
 
 class AddAdvertisementScreen extends StatefulWidget {
   const AddAdvertisementScreen({super.key});
@@ -28,8 +29,8 @@ class _AddAdvertisementScreenState extends State<AddAdvertisementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer3<ThemeProvider, AdvertisementProvider, AuthProvider>(
-      builder: (context, themeProvider, adProvider, authProvider, child) {
+    return Consumer4<ThemeProvider, AdvertisementProvider, AuthProvider, AdminProvider>(
+      builder: (context, themeProvider, adProvider, authProvider, adminProvider, child) {
         if (!authProvider.isManager) {
           return Scaffold(
             backgroundColor: themeProvider.backgroundColor,
@@ -46,7 +47,8 @@ class _AddAdvertisementScreenState extends State<AddAdvertisementScreen> {
           );
         }
 
-        final managerCities = adProvider.getManagerCities(authProvider.currentUser?.id ?? '');
+        final managerCities = adminProvider.getManagerCities(authProvider.currentUser?.id ?? '');
+        final cities = adProvider.cities.where((city) => managerCities.contains(city.id)).toList();
 
         return Scaffold(
           backgroundColor: themeProvider.backgroundColor,
@@ -224,7 +226,7 @@ class _AddAdvertisementScreenState extends State<AddAdvertisementScreen> {
                         borderSide: const BorderSide(color: Colors.red, width: 1),
                       ),
                     ),
-                    items: managerCities.map((city) {
+                    items: cities.map((city) {
                       return DropdownMenuItem<String>(
                         value: city.id,
                         child: Text('${city.name}, ${city.country}'),

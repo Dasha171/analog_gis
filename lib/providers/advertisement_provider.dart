@@ -35,12 +35,9 @@ class AdvertisementProvider extends ChangeNotifier {
     }
   }
 
-  // Получение городов менеджера
-  List<City> getManagerCities(String managerId) {
-    final permissions = getManagerPermissions(managerId);
-    if (permissions == null) return [];
-    
-    return _cities.where((city) => permissions.allowedCities.contains(city.id)).toList();
+  // Получение городов менеджера из AdminProvider
+  List<City> getManagerCitiesFromAdmin(String managerId, List<String> cityIds) {
+    return _cities.where((city) => cityIds.contains(city.id)).toList();
   }
 
   // Инициализация

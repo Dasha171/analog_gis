@@ -105,7 +105,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           children: [
                             // Кастомные табы на всю ширину
                             Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 16),
+                              margin: const EdgeInsets.symmetric(horizontal: 8),
                               decoration: BoxDecoration(
                                 color: themeProvider.cardColor,
                                 borderRadius: BorderRadius.circular(12),
@@ -119,7 +119,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                 dividerColor: Colors.transparent,
                                 labelColor: Colors.white,
                                 unselectedLabelColor: themeProvider.textSecondaryColor,
-                                labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                                labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                                 tabs: const [
                                   Tab(text: 'Статистика'),
                                   Tab(text: 'Пользователи'),
@@ -259,7 +259,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             itemCount: adminProvider.users.length,
             itemBuilder: (context, index) {
               final user = adminProvider.users[index];
-              return _buildUserItem(context, themeProvider, adminProvider, user);
+              return _buildUserItem(context, themeProvider, adminProvider, adProvider, user);
             },
           ),
         ),
@@ -533,7 +533,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  Widget _buildUserItem(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider, dynamic user) {
+  Widget _buildUserItem(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider, AdvertisementProvider adProvider, dynamic user) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -628,7 +628,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 onSelected: (value) {
                   switch (value) {
                     case 'edit_role':
-                      _showEditRoleDialog(context, themeProvider, adminProvider, user);
+                      _showEditRoleDialog(context, themeProvider, adminProvider, adProvider, user);
+                      break;
+                    case 'manage_cities':
+                      _showManagerCityDialog(context, themeProvider, adminProvider, adProvider, user);
                       break;
                     case 'delete':
                       adminProvider.deleteUser(user.id);
@@ -640,6 +643,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     value: 'edit_role',
                     child: Text('Изменить роль'),
                   ),
+                  if (user.role == 'manager')
+                    const PopupMenuItem(
+                      value: 'manage_cities',
+                      child: Text('Управление городами'),
+                    ),
                   const PopupMenuItem(
                     value: 'delete',
                     child: Text('Удалить'),
@@ -899,8 +907,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  void _showEditRoleDialog(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider, dynamic user) {
+  void _showEditRoleDialog(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider, AdvertisementProvider adProvider, dynamic user) {
     String selectedRole = user.role;
+    List<String> selectedCities = List.from(user.managedCities ?? []);
 
     showDialog(
       context: context,
@@ -1314,5 +1323,100 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       default:
         return 'Неизвестно';
     }
+  }
+
+  // Диалог управления городами менеджера
+  void _showManagerCityDialog(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider, AdvertisementProvider adProvider, dynamic user) {
+    List<String> selectedCities = List.from(user.managedCities ?? []);
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: themeProvider.cardColor,
+          title: Text(
+            'Управление городами менеджера',
+            style: TextStyle(color: themeProvider.textColor),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400,
+            child: Column(
+              children: [
+                Text(
+                  'Менеджер: ${user.name}',
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Выберите города для управления:',
+                  style: TextStyle(
+                    color: themeProvider.textColor,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: adProvider.cities.length,
+                    itemBuilder: (context, index) {
+                      final city = adProvider.cities[index];
+                      final isSelected = selectedCities.contains(city.id);
+                      return CheckboxListTile(
+                        title: Text(
+                          city.name,
+                          style: TextStyle(color: themeProvider.textColor),
+                        ),
+                        subtitle: Text(
+                          city.country,
+                          style: TextStyle(color: themeProvider.textSecondaryColor),
+                        ),
+                        value: isSelected,
+                        onChanged: (value) {
+                          setState(() {
+                            if (value == true) {
+                              selectedCities.add(city.id);
+                            } else {
+                              selectedCities.remove(city.id);
+                            }
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Отмена',
+                style: TextStyle(color: themeProvider.textSecondaryColor),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                adminProvider.updateManagerCities(user.id, selectedCities);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Города менеджера обновлены!')),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0C79FE),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Сохранить'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

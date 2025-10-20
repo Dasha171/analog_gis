@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/advertisement_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/admin_provider.dart';
 import 'add_advertisement_screen.dart';
 
 class ManagerPanelScreen extends StatefulWidget {
@@ -23,8 +24,8 @@ class _ManagerPanelScreenState extends State<ManagerPanelScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer3<ThemeProvider, AdvertisementProvider, AuthProvider>(
-      builder: (context, themeProvider, adProvider, authProvider, child) {
+    return Consumer4<ThemeProvider, AdvertisementProvider, AuthProvider, AdminProvider>(
+      builder: (context, themeProvider, adProvider, authProvider, adminProvider, child) {
         if (!authProvider.isManager) {
           return Scaffold(
             backgroundColor: themeProvider.backgroundColor,
@@ -135,7 +136,7 @@ class _ManagerPanelScreenState extends State<ManagerPanelScreen> {
                                 children: [
                                   _buildAdvertisementsTab(context, themeProvider, adProvider, authProvider),
                                   _buildStatsTab(context, themeProvider, adProvider, authProvider),
-                                  _buildPermissionsTab(context, themeProvider, adProvider, authProvider),
+                                  _buildPermissionsTab(context, themeProvider, adProvider, authProvider, adminProvider),
                                 ],
                               ),
                             ),
@@ -227,10 +228,9 @@ class _ManagerPanelScreenState extends State<ManagerPanelScreen> {
     );
   }
 
-  Widget _buildPermissionsTab(BuildContext context, ThemeProvider themeProvider, AdvertisementProvider adProvider, AuthProvider authProvider) {
-    final permissions = adProvider.getManagerPermissions(authProvider.currentUser?.id ?? '');
-    final allowedCities = permissions?.allowedCities ?? [];
-    final managerCities = adProvider.cities.where((city) => allowedCities.contains(city.id)).toList();
+  Widget _buildPermissionsTab(BuildContext context, ThemeProvider themeProvider, AdvertisementProvider adProvider, AuthProvider authProvider, AdminProvider adminProvider) {
+    final managerCities = adminProvider.getManagerCities(authProvider.currentUser?.id ?? '');
+    final cities = adProvider.cities.where((city) => managerCities.contains(city.id)).toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -273,9 +273,9 @@ class _ManagerPanelScreenState extends State<ManagerPanelScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildPermissionItem(themeProvider, 'Добавлять рекламу', permissions?.canAddAds ?? false),
-                _buildPermissionItem(themeProvider, 'Редактировать рекламу', permissions?.canEditAds ?? false),
-                _buildPermissionItem(themeProvider, 'Удалять рекламу', permissions?.canDeleteAds ?? false),
+                _buildPermissionItem(themeProvider, 'Добавлять рекламу', true),
+                _buildPermissionItem(themeProvider, 'Редактировать рекламу', true),
+                _buildPermissionItem(themeProvider, 'Удалять рекламу', false),
               ],
             ),
           ),
@@ -293,7 +293,7 @@ class _ManagerPanelScreenState extends State<ManagerPanelScreen> {
           ),
           const SizedBox(height: 16),
           
-          if (managerCities.isEmpty)
+          if (cities.isEmpty)
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -311,7 +311,7 @@ class _ManagerPanelScreenState extends State<ManagerPanelScreen> {
               ),
             )
           else
-            ...managerCities.map((city) => _buildCityCard(themeProvider, city)),
+            ...cities.map((city) => _buildCityCard(themeProvider, city)),
         ],
       ),
     );

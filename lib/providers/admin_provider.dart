@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'auth_provider.dart';
+import 'advertisement_provider.dart';
 
 class AdminUser {
   final String id;
@@ -11,6 +12,7 @@ class AdminUser {
   final DateTime createdAt;
   final bool isActive;
   final Map<String, dynamic> permissions;
+  final List<String> managedCities; // Города, которыми управляет менеджер
 
   AdminUser({
     required this.id,
@@ -20,6 +22,7 @@ class AdminUser {
     required this.createdAt,
     required this.isActive,
     required this.permissions,
+    this.managedCities = const [],
   });
 
   Map<String, dynamic> toJson() {
@@ -31,6 +34,7 @@ class AdminUser {
       'createdAt': createdAt.toIso8601String(),
       'isActive': isActive,
       'permissions': permissions,
+      'managedCities': managedCities,
     };
   }
 
@@ -43,6 +47,7 @@ class AdminUser {
       createdAt: DateTime.parse(json['createdAt']),
       isActive: json['isActive'],
       permissions: Map<String, dynamic>.from(json['permissions']),
+      managedCities: List<String>.from(json['managedCities'] ?? []),
     );
   }
 }
@@ -384,6 +389,39 @@ class AdminProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('Ошибка обновления статистики: $e');
+    }
+  }
+
+  // Обновление городов менеджера
+  Future<void> updateManagerCities(String userId, List<String> cityIds) async {
+    try {
+      final userIndex = _users.indexWhere((user) => user.id == userId);
+      if (userIndex != -1) {
+        _users[userIndex] = AdminUser(
+          id: _users[userIndex].id,
+          name: _users[userIndex].name,
+          email: _users[userIndex].email,
+          role: _users[userIndex].role,
+          createdAt: _users[userIndex].createdAt,
+          isActive: _users[userIndex].isActive,
+          permissions: _users[userIndex].permissions,
+          managedCities: cityIds,
+        );
+        await _saveUsersData();
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Ошибка обновления городов менеджера: $e');
+    }
+  }
+
+  // Получение городов менеджера
+  List<String> getManagerCities(String userId) {
+    try {
+      final user = _users.firstWhere((user) => user.id == userId);
+      return user.managedCities;
+    } catch (e) {
+      return [];
     }
   }
 

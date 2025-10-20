@@ -56,82 +56,82 @@ class ProfileScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Column(
-                        children: [
-                          // Аватар
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0C79FE).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(50),
-                            ),
-                            child: authProvider.currentUser?.profileImageUrl != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(50),
-                                    child: Image.network(
-                                      authProvider.currentUser!.profileImageUrl!,
-                                      width: 100,
-                                      height: 100,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return const Icon(
-                                          Icons.person,
-                                          size: 50,
-                                          color: Color(0xFF0C79FE),
-                                        );
-                                      },
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.person,
-                                    size: 50,
-                                    color: Color(0xFF0C79FE),
-                                  ),
-                          ),
-                          const SizedBox(height: 16),
-                          
-                          // Имя пользователя
-                          Text(
-                            authProvider.currentUser?.fullName ?? 'Пользователь',
-                            style: TextStyle(
-                              color: themeProvider.textColor,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          
-                          // Email
-                          Text(
-                            authProvider.currentUser?.email ?? '',
-                            style: TextStyle(
-                              color: themeProvider.textSecondaryColor,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          
-                          // Кнопка редактирования
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              // TODO: Редактировать профиль
-                            },
-                            icon: const Icon(Icons.edit, color: Color(0xFF0C79FE)),
-                            label: const Text(
-                              'Редактировать профиль',
-                              style: TextStyle(color: Color(0xFF0C79FE)),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFF0C79FE)),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                            children: [
+                              // Аватар
+                              Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0C79FE).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                                child: authProvider.currentUser?.profileImageUrl != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(50),
+                                        child: Image.network(
+                                          authProvider.currentUser!.profileImageUrl!,
+                                          width: 100,
+                                          height: 100,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return const Icon(
+                                              Icons.person,
+                                              size: 50,
+                                              color: Color(0xFF0C79FE),
+                                            );
+                                          },
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.person,
+                                        size: 50,
+                                        color: Color(0xFF0C79FE),
+                                      ),
                               ),
-                            ),
+                              const SizedBox(height: 16),
+                              
+                              // Имя пользователя
+                              Text(
+                                authProvider.currentUser?.fullName ?? 'Пользователь',
+                                style: TextStyle(
+                                  color: themeProvider.textColor,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              
+                              // Email
+                              Text(
+                                authProvider.currentUser?.email ?? '',
+                                style: TextStyle(
+                                  color: themeProvider.textSecondaryColor,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              // Кнопка редактирования
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  // TODO: Редактировать профиль
+                                },
+                                icon: const Icon(Icons.edit, color: Color(0xFF0C79FE)),
+                                label: const Text(
+                                  'Редактировать профиль',
+                                  style: TextStyle(color: Color(0xFF0C79FE)),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Color(0xFF0C79FE)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                    
+                        ),
+                        
                         const SizedBox(height: 24),
                         
                         // Для обычных пользователей показываем действия
@@ -352,212 +352,6 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
-  
-  Widget _buildSettingsSection(BuildContext context, ThemeProvider themeProvider) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: themeProvider.cardColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              'Настройки',
-              style: TextStyle(
-                color: themeProvider.textColor,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          
-          _buildSettingsItem(
-            icon: Icons.language,
-            title: 'Язык',
-            subtitle: 'Русский',
-            onTap: () {
-              // TODO: Настройки языка
-            },
-            themeProvider: themeProvider,
-          ),
-          
-          _buildSettingsItem(
-            icon: Icons.notifications,
-            title: 'Уведомления',
-            subtitle: 'Включены',
-            onTap: () {
-              // TODO: Настройки уведомлений
-            },
-            themeProvider: themeProvider,
-          ),
-          
-          _buildSettingsItem(
-            icon: Icons.privacy_tip,
-            title: 'Приватность',
-            subtitle: 'Настройки конфиденциальности',
-            onTap: () {
-              // TODO: Настройки приватности
-            },
-            themeProvider: themeProvider,
-          ),
-          
-          _buildSettingsItem(
-            icon: Icons.security,
-            title: 'Безопасность',
-            subtitle: 'Пароль и вход',
-            onTap: () {
-              // TODO: Настройки безопасности
-            },
-            themeProvider: themeProvider,
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildAdditionalSection(BuildContext context, ThemeProvider themeProvider) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: themeProvider.cardColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              'Дополнительно',
-              style: TextStyle(
-                color: themeProvider.textColor,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          
-          _buildSettingsItem(
-            icon: Icons.help,
-            title: 'Помощь и поддержка',
-            subtitle: 'FAQ, контакты',
-            onTap: () {
-              // TODO: Помощь
-            },
-            themeProvider: themeProvider,
-          ),
-          
-          _buildSettingsItem(
-            icon: Icons.info,
-            title: 'О приложении',
-            subtitle: 'Версия 1.0.0',
-            onTap: () {
-              _showAboutDialog(context);
-            },
-            themeProvider: themeProvider,
-          ),
-          
-          _buildSettingsItem(
-            icon: Icons.logout,
-            title: 'Выйти',
-            subtitle: 'Завершить сессию',
-            onTap: () {
-              final authProvider = context.read<AuthProvider>();
-              _showLogoutDialog(context, themeProvider, authProvider);
-            },
-            textColor: Colors.red,
-            themeProvider: themeProvider,
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildSettingsItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    Color? textColor,
-    required ThemeProvider themeProvider,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: textColor ?? themeProvider.textSecondaryColor,
-              size: 24,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: textColor ?? themeProvider.textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: themeProvider.textSecondaryColor,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: themeProvider.textSecondaryColor,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  void _showAboutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('О приложении'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Anal GIS - Навигационная система'),
-            SizedBox(height: 8),
-            Text('Версия: 1.0.0'),
-            SizedBox(height: 8),
-            Text('Разработчик: Anal GIS Team'),
-            SizedBox(height: 8),
-            Text('Описание: Современная навигационная система с офлайн картами и маршрутизацией.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
-          ),
-        ],
-      ),
-    );
-  }
-  
 
   Widget _buildActionSection(
     BuildContext context,

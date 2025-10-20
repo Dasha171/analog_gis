@@ -140,6 +140,11 @@ class AdminProvider extends ChangeNotifier {
       final usersJson = prefs.getString('all_users') ?? '[]';
       final usersList = json.decode(usersJson) as List;
       
+      print('Загружено пользователей из SharedPreferences: ${usersList.length}');
+      for (var userData in usersList) {
+        print('Пользователь: ${userData['firstName']} ${userData['lastName']} (${userData['email']})');
+      }
+      
       // Конвертируем в AdminUser
       _users = usersList.map((userData) {
         return AdminUser(

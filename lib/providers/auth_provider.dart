@@ -107,6 +107,7 @@ class AuthProvider extends ChangeNotifier {
       
       await prefs.setString('all_users', json.encode(allUsersList));
       print('Пользователь добавлен в общий список: ${user.email}');
+      print('Данные пользователя: firstName=${user.firstName}, lastName=${user.lastName}, fullName=${user.fullName}');
     } catch (e) {
       print('Ошибка добавления пользователя в общий список: $e');
     }

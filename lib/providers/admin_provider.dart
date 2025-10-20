@@ -276,6 +276,34 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  // Синхронизация с all_users
+  Future<void> _syncToAllUsers() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Загружаем текущий список all_users
+      final allUsersJson = prefs.getString('all_users') ?? '[]';
+      final allUsersList = json.decode(allUsersJson) as List;
+      
+      // Обновляем данные в all_users на основе admin_users
+      for (var adminUser in _users) {
+        final userIndex = allUsersList.indexWhere((u) => u['email'] == adminUser.email);
+        if (userIndex != -1) {
+          // Обновляем существующего пользователя
+          allUsersList[userIndex]['role'] = adminUser.role;
+          allUsersList[userIndex]['managedCities'] = adminUser.managedCities;
+          allUsersList[userIndex]['isActive'] = adminUser.isActive;
+        }
+      }
+      
+      // Сохраняем обновленный список
+      await prefs.setString('all_users', json.encode(allUsersList));
+      print('Данные синхронизированы с all_users');
+    } catch (e) {
+      print('Ошибка синхронизации с all_users: $e');
+    }
+  }
+
   // Сохранение статистики
   Future<void> _saveAppStats() async {
     try {
@@ -358,9 +386,15 @@ class AdminProvider extends ChangeNotifier {
           createdAt: _users[userIndex].createdAt,
           isActive: _users[userIndex].isActive,
           permissions: _getDefaultPermissions(newRole),
+          managedCities: _users[userIndex].managedCities,
         );
+        
+        // Сохраняем в обеих системах
         await _saveUsersData();
+        await _syncToAllUsers();
         notifyListeners();
+        
+        print('Роль пользователя обновлена: ${_users[userIndex].name} -> $newRole');
       }
     } catch (e) {
       print('Ошибка обновления роли: $e');
@@ -380,9 +414,15 @@ class AdminProvider extends ChangeNotifier {
           createdAt: _users[userIndex].createdAt,
           isActive: !_users[userIndex].isActive,
           permissions: _users[userIndex].permissions,
+          managedCities: _users[userIndex].managedCities,
         );
+        
+        // Сохраняем в обеих системах
         await _saveUsersData();
+        await _syncToAllUsers();
         notifyListeners();
+        
+        print('Статус пользователя изменен: ${_users[userIndex].name} -> ${_users[userIndex].isActive ? 'активен' : 'заблокирован'}');
       }
     } catch (e) {
       print('Ошибка изменения статуса пользователя: $e');
@@ -448,8 +488,13 @@ class AdminProvider extends ChangeNotifier {
           permissions: _users[userIndex].permissions,
           managedCities: cityIds,
         );
+        
+        // Сохраняем в обеих системах
         await _saveUsersData();
+        await _syncToAllUsers();
         notifyListeners();
+        
+        print('Города менеджера обновлены: ${_users[userIndex].name} - ${cityIds.length} городов');
       }
     } catch (e) {
       print('Ошибка обновления городов менеджера: $e');

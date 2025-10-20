@@ -109,7 +109,7 @@ class _ManagerPanelScreenState extends State<ManagerPanelScreen> {
                             Container(
                               margin: const EdgeInsets.symmetric(horizontal: 24),
                               decoration: BoxDecoration(
-                                color: themeProvider.cardColor,
+                                color: const Color(0xFF151515),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: TabBar(

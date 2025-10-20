@@ -128,6 +128,8 @@ class AdminProvider extends ChangeNotifier {
     _setLoading(true);
     await _loadUsersData();
     await _loadAppStats();
+    // Обновляем статистику на основе реальных данных пользователей
+    await updateStats();
     _setLoading(false);
   }
 
@@ -247,13 +249,17 @@ class AdminProvider extends ChangeNotifier {
 
   // Генерация демо статистики
   Future<void> _generateDemoStats() async {
+    // Используем реальные данные вместо случайных чисел
+    final totalUsers = _users.length;
+    final activeUsers = _users.where((u) => u.isActive).length;
+    
     _appStats = AppStats(
-      totalUsers: 1250,
-      activeUsers: 890,
-      totalOrganizations: 340,
-      totalReviews: 2100,
-      totalPhotos: 5600,
-      totalFriendships: 890,
+      totalUsers: totalUsers,
+      activeUsers: activeUsers,
+      totalOrganizations: 0, // Пока нет реальных организаций
+      totalReviews: 0, // Пока нет реальных отзывов
+      totalPhotos: 0, // Пока нет реальных фото
+      totalFriendships: 0, // Пока нет реальных друзей
       lastUpdated: DateTime.now(),
     );
     await _saveAppStats();
@@ -397,17 +403,25 @@ class AdminProvider extends ChangeNotifier {
   // Обновление статистики
   Future<void> updateStats() async {
     try {
+      // Подсчитываем реальную статистику
+      final totalUsers = _users.length;
+      final activeUsers = _users.where((u) => u.isActive).length;
+      final managers = _users.where((u) => u.role == 'manager').length;
+      final admins = _users.where((u) => u.role == 'admin').length;
+      
       _appStats = AppStats(
-        totalUsers: _users.length,
-        activeUsers: _users.where((u) => u.isActive).length,
-        totalOrganizations: _appStats.totalOrganizations + 1, // Демо увеличение
-        totalReviews: _appStats.totalReviews + 5, // Демо увеличение
-        totalPhotos: _appStats.totalPhotos + 10, // Демо увеличение
-        totalFriendships: _appStats.totalFriendships + 2, // Демо увеличение
+        totalUsers: totalUsers,
+        activeUsers: activeUsers,
+        totalOrganizations: 0, // Пока нет реальных организаций
+        totalReviews: 0, // Пока нет реальных отзывов
+        totalPhotos: 0, // Пока нет реальных фото
+        totalFriendships: 0, // Пока нет реальных друзей
         lastUpdated: DateTime.now(),
       );
       await _saveAppStats();
       notifyListeners();
+      
+      print('Статистика обновлена: Пользователей: $totalUsers, Активных: $activeUsers, Менеджеров: $managers, Админов: $admins');
     } catch (e) {
       print('Ошибка обновления статистики: $e');
     }

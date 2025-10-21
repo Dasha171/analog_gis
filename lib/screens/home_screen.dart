@@ -20,7 +20,7 @@ import 'login_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/optimized_tile_layer.dart';
 import '../widgets/optimized_marker_layer.dart';
-import '../widgets/optimized_polyline_layer.dart';
+import '../widgets/business_modal_widget.dart';
 import '../providers/user_actions_provider.dart';
 import '../providers/friends_provider.dart';
 import '../providers/advertisement_provider.dart';

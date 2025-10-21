@@ -4,6 +4,8 @@ import 'package:latlong2/latlong.dart' as latlng;
 import 'package:geolocator/geolocator.dart';
 import '../models/poi_model.dart';
 import '../models/route_model.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 
 class MapProvider extends ChangeNotifier {
   MapController? _mapController;
@@ -49,6 +51,16 @@ class MapProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Для web платформы используем упрощенную версию
+      if (kIsWeb) {
+        // Устанавливаем фиксированную позицию для демонстрации
+        _currentLocation = const latlng.LatLng(43.238949, 76.889709);
+        _currentLocationText = 'Алматы, Казахстан';
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {

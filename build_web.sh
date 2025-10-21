@@ -12,6 +12,9 @@ export PATH="$HOME/flutter/bin:$PATH"
 # Включаем поддержку web
 flutter config --enable-web
 
+# Используем упрощенную версию зависимостей для web
+cp pubspec_web.yaml pubspec.yaml
+
 # Получаем зависимости
 flutter pub get
 

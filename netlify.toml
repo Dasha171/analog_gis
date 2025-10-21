@@ -1,11 +1,10 @@
 [build]
   publish = "build/web"
-  command = "chmod +x build.sh && ./build.sh"
+  command = "flutter build web --release --no-tree-shake-icons"
 
 [build.environment]
   NODE_VERSION = "18"
   FLUTTER_VERSION = "3.16.0"
-  FLUTTER_WEB_AUTO_DETECT = "true"
 
 # Автоматический деплой при push в main
 [build.processing]

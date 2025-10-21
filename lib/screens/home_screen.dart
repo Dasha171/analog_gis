@@ -18,6 +18,8 @@ import 'profile_screen.dart';
 import 'offline_maps_screen.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/optimized_tile_layer.dart';
+import '../widgets/optimized_marker_layer.dart';
 import '../widgets/optimized_polyline_layer.dart';
 import '../providers/user_actions_provider.dart';
 import '../providers/friends_provider.dart';
@@ -105,8 +107,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         cameraConstraint: CameraConstraint.contain(
                           bounds: LatLngBounds(
-                            LatLng(-85.0, -180.0),
-                            LatLng(85.0, 180.0),
+                            latlng.LatLng(-85.0, -180.0),
+                            latlng.LatLng(85.0, 180.0),
                           ),
                         ),
                       ),
@@ -1016,7 +1018,7 @@ extension _HomeScreenStateMenu on _HomeScreenState {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const BusinessModalWidget(),
+      builder: (context) => BusinessModalWidget(),
     );
   }
 }

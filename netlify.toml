@@ -1,10 +1,11 @@
 [build]
   publish = "build/web"
-  command = "chmod +x build_web.sh && ./build_web.sh"
+  command = "chmod +x build.sh && ./build.sh"
 
 [build.environment]
   NODE_VERSION = "18"
   FLUTTER_VERSION = "3.16.0"
+  FLUTTER_WEB_AUTO_DETECT = "true"
 
 # Автоматический деплой при push в main
 [build.processing]

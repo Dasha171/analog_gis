@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as latlng;
-import 'dart:async';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../providers/map_provider.dart';
 import '../providers/search_provider.dart';
 import '../providers/map_layers_provider.dart';
@@ -18,7 +18,7 @@ import 'profile_screen.dart';
 import 'offline_maps_screen.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
-import '../widgets/business_modal_widget.dart';
+import '../widgets/optimized_polyline_layer.dart';
 import '../providers/user_actions_provider.dart';
 import '../providers/friends_provider.dart';
 import '../providers/advertisement_provider.dart';
@@ -37,7 +37,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showSearchResults = false;
   final MapController _mapController = MapController();
   bool _isBottomSheetExpanded = false;
-  Timer? _searchDebounce;
   
   @override
   void initState() {
@@ -58,26 +57,21 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
-    _searchDebounce?.cancel();
     super.dispose();
   }
 
   void _onSearchChanged() {
-    final query = _searchController.text.trim();
-    _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 280), () {
-      if (!mounted) return;
-      if (query.isNotEmpty) {
-        context.read<SearchProvider>().search(query);
-        setState(() {
-          _showSearchResults = true;
-        });
-      } else {
-        setState(() {
-          _showSearchResults = false;
-        });
-      }
-    });
+    final query = _searchController.text;
+    if (query.isNotEmpty) {
+      context.read<SearchProvider>().search(query);
+      setState(() {
+        _showSearchResults = true;
+      });
+    } else {
+      setState(() {
+        _showSearchResults = false;
+      });
+    }
   }
 
   @override
@@ -97,7 +91,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       mapController: _mapController,
                       options: MapOptions(
                         initialCenter: mapProvider.initialCameraPosition,
-                        initialZoom: 13.0,
+                        initialZoom: 15.0,
+                        minZoom: 3.0,
+                        maxZoom: 18.0,
                         onTap: (tapPosition, point) {
                           setState(() {
                             _showSearchResults = false;
@@ -107,19 +103,25 @@ class _HomeScreenState extends State<HomeScreen> {
                         interactionOptions: const InteractionOptions(
                           flags: InteractiveFlag.all,
                         ),
+                        cameraConstraint: CameraConstraint.contain(
+                          bounds: LatLngBounds(
+                            LatLng(-85.0, -180.0),
+                            LatLng(85.0, 180.0),
+                          ),
+                        ),
                       ),
                       children: [
-                        TileLayer(
+                        OptimizedTileLayer(
                           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.example.anal_gis',
-                          maxZoom: 19,
+                          maxZoom: 18,
+                          minZoom: 3,
                           backgroundColor: themeProvider.backgroundColor,
                         ),
-                        MarkerLayer(
+                        OptimizedMarkerLayer(
                           markers: mapProvider.markers,
-                          rotate: false,
                         ),
-                        PolylineLayer(
+                        OptimizedPolylineLayer(
                           polylines: mapProvider.polylines,
                         ),
                       ],

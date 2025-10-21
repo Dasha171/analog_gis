@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as latlng;
 import 'package:geolocator/geolocator.dart';
+import 'dart:async';
 import '../models/poi_model.dart';
 import '../models/route_model.dart';
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart';
 
 class MapProvider extends ChangeNotifier {
   MapController? _mapController;
@@ -18,6 +17,7 @@ class MapProvider extends ChangeNotifier {
   String _mapStyle = 'standard';
   String _currentLocationText = 'Определяем местоположение...';
   bool _isMapLoaded = false;
+  Timer? _debounceTimer;
 
   // Default camera position (Almaty, Kazakhstan)
   static const latlng.LatLng _initialCameraPosition = latlng.LatLng(43.238949, 76.889709);
@@ -46,21 +46,20 @@ class MapProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _debouncedNotifyListeners() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 100), () {
+      notifyListeners();
+    });
+  }
+
   Future<void> getCurrentLocation() async {
+    if (_isLoading) return; // Prevent multiple simultaneous requests
+    
     _isLoading = true;
     notifyListeners();
 
     try {
-      // Для web платформы используем упрощенную версию
-      if (kIsWeb) {
-        // Устанавливаем фиксированную позицию для демонстрации
-        _currentLocation = const latlng.LatLng(43.238949, 76.889709);
-        _currentLocationText = 'Алматы, Казахстан';
-        _isLoading = false;
-        notifyListeners();
-        return;
-      }
-
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
@@ -90,8 +89,8 @@ class MapProvider extends ChangeNotifier {
 
       print('Getting current position...');
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        desiredAccuracy: LocationAccuracy.medium, // Reduced accuracy for better performance
+        timeLimit: const Duration(seconds: 8), // Reduced timeout
       );
 
       print('Position received: ${position.latitude}, ${position.longitude}');
@@ -272,5 +271,11 @@ class MapProvider extends ChangeNotifier {
         marker.key?.toString().startsWith('search_') == true ||
         marker.key?.toString().contains('search_') == true);
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
   }
 }

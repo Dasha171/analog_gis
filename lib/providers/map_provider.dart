@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as latlng;
 import 'package:geolocator/geolocator.dart';
-import 'dart:async';
 import '../models/poi_model.dart';
 import '../models/route_model.dart';
 
@@ -17,7 +16,6 @@ class MapProvider extends ChangeNotifier {
   String _mapStyle = 'standard';
   String _currentLocationText = 'Определяем местоположение...';
   bool _isMapLoaded = false;
-  Timer? _debounceTimer;
 
   // Default camera position (Almaty, Kazakhstan)
   static const latlng.LatLng _initialCameraPosition = latlng.LatLng(43.238949, 76.889709);
@@ -46,16 +44,7 @@ class MapProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _debouncedNotifyListeners() {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 100), () {
-      notifyListeners();
-    });
-  }
-
   Future<void> getCurrentLocation() async {
-    if (_isLoading) return; // Prevent multiple simultaneous requests
-    
     _isLoading = true;
     notifyListeners();
 
@@ -89,8 +78,8 @@ class MapProvider extends ChangeNotifier {
 
       print('Getting current position...');
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.medium, // Reduced accuracy for better performance
-        timeLimit: const Duration(seconds: 8), // Reduced timeout
+        desiredAccuracy: LocationAccuracy.medium, // Изменено с high на medium для скорости
+        timeLimit: const Duration(seconds: 5), // Уменьшено время ожидания
       );
 
       print('Position received: ${position.latitude}, ${position.longitude}');
@@ -239,13 +228,15 @@ class MapProvider extends ChangeNotifier {
 
   void zoomIn() {
     if (_mapController != null) {
-      _mapController!.move(_mapController!.camera.center, _mapController!.camera.zoom + 1);
+      final newZoom = (_mapController!.camera.zoom + 1).clamp(3.0, 18.0);
+      _mapController!.move(_mapController!.camera.center, newZoom);
     }
   }
 
   void zoomOut() {
     if (_mapController != null) {
-      _mapController!.move(_mapController!.camera.center, _mapController!.camera.zoom - 1);
+      final newZoom = (_mapController!.camera.zoom - 1).clamp(3.0, 18.0);
+      _mapController!.move(_mapController!.camera.center, newZoom);
     }
   }
 
@@ -271,11 +262,5 @@ class MapProvider extends ChangeNotifier {
         marker.key?.toString().startsWith('search_') == true ||
         marker.key?.toString().contains('search_') == true);
     notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    _debounceTimer?.cancel();
-    super.dispose();
   }
 }

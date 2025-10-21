@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as latlng;
 import 'package:provider/provider.dart';
-import 'dart:async';
 import '../providers/map_provider.dart';
 import '../providers/search_provider.dart';
 import '../providers/map_layers_provider.dart';
@@ -18,9 +17,7 @@ import 'profile_screen.dart';
 import 'offline_maps_screen.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
-import '../widgets/optimized_tile_layer.dart';
-import '../widgets/optimized_marker_layer.dart';
-import '../widgets/business_modal_widget.dart';
+import '../widgets/optimized_map_widget.dart';
 import '../providers/user_actions_provider.dart';
 import '../providers/friends_provider.dart';
 import '../providers/advertisement_provider.dart';
@@ -34,16 +31,32 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   bool _showSearchResults = false;
   final MapController _mapController = MapController();
   bool _isBottomSheetExpanded = false;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
   
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchChanged);
+    
+    // Инициализация анимации
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MapProvider>().setMapController(_mapController);
       context.read<MapLayersProvider>().initializeLayers();
@@ -59,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -69,10 +83,12 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _showSearchResults = true;
       });
+      _animationController.forward();
     } else {
       setState(() {
         _showSearchResults = false;
       });
+      _animationController.reverse();
     }
   }
 
@@ -87,47 +103,16 @@ class _HomeScreenState extends State<HomeScreen> {
               // Карта OpenStreetMap
               Consumer<MapProvider>(
                 builder: (context, mapProvider, child) {
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(0),
-                    child: FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(
-                        initialCenter: mapProvider.initialCameraPosition,
-                        initialZoom: 15.0,
-                        minZoom: 3.0,
-                        maxZoom: 18.0,
-                        onTap: (tapPosition, point) {
-                          setState(() {
-                            _showSearchResults = false;
-                            _searchController.clear();
-                          });
-                        },
-                        interactionOptions: const InteractionOptions(
-                          flags: InteractiveFlag.all,
-                        ),
-                        cameraConstraint: CameraConstraint.contain(
-                          bounds: LatLngBounds(
-                            latlng.LatLng(-85.0, -180.0),
-                            latlng.LatLng(85.0, 180.0),
-                          ),
-                        ),
-                      ),
-                      children: [
-                        OptimizedTileLayer(
-                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.example.anal_gis',
-                          maxZoom: 18,
-                          minZoom: 3,
-                          backgroundColor: themeProvider.backgroundColor,
-                        ),
-                        OptimizedMarkerLayer(
-                          markers: mapProvider.markers,
-                        ),
-                        OptimizedPolylineLayer(
-                          polylines: mapProvider.polylines,
-                        ),
-                      ],
-                    ),
+                  return OptimizedMapWidget(
+                    mapController: _mapController,
+                    markers: mapProvider.markers,
+                    polylines: mapProvider.polylines,
+                    onTap: (point) {
+                      setState(() {
+                        _showSearchResults = false;
+                        _searchController.clear();
+                      });
+                    },
                   );
                 },
               ),
@@ -518,7 +503,10 @@ class _HomeScreenState extends State<HomeScreen> {
           
           // Если есть результаты поиска, показываем их вместо кнопок
           if (searchProvider.searchResults.isNotEmpty) {
-            return SearchResultsWidget();
+            return FadeTransition(
+              opacity: _fadeAnimation,
+              child: SearchResultsWidget(),
+            );
           }
           
           return SingleChildScrollView(
@@ -576,6 +564,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: ListView.builder(
                               scrollDirection: Axis.horizontal,
                               itemCount: ads.length,
+                              cacheExtent: 200, // Кэширование для плавной прокрутки
                               itemBuilder: (context, index) {
                                 final ad = ads[index];
                                 return Consumer<ThemeProvider>(
@@ -1018,7 +1007,7 @@ extension _HomeScreenStateMenu on _HomeScreenState {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => BusinessModalWidget(),
+      builder: (context) => const BusinessModalWidget(),
     );
   }
 }

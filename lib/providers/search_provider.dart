@@ -141,7 +141,7 @@ class SearchProvider extends ChangeNotifier {
     notifyListeners();
 
     // Simulate API delay
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 300));
 
     // Filter mock data based on query
     _searchResults = _mockData.where((result) {

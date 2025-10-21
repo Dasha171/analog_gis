@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as latlng;
+import 'dart:async';
 import 'package:provider/provider.dart';
 import '../providers/map_provider.dart';
 import '../providers/search_provider.dart';
@@ -36,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showSearchResults = false;
   final MapController _mapController = MapController();
   bool _isBottomSheetExpanded = false;
+  Timer? _searchDebounce;
   
   @override
   void initState() {
@@ -56,21 +58,26 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
   void _onSearchChanged() {
-    final query = _searchController.text;
-    if (query.isNotEmpty) {
-      context.read<SearchProvider>().search(query);
-      setState(() {
-        _showSearchResults = true;
-      });
-    } else {
-      setState(() {
-        _showSearchResults = false;
-      });
-    }
+    final query = _searchController.text.trim();
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 280), () {
+      if (!mounted) return;
+      if (query.isNotEmpty) {
+        context.read<SearchProvider>().search(query);
+        setState(() {
+          _showSearchResults = true;
+        });
+      } else {
+        setState(() {
+          _showSearchResults = false;
+        });
+      }
+    });
   }
 
   @override
@@ -90,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       mapController: _mapController,
                       options: MapOptions(
                         initialCenter: mapProvider.initialCameraPosition,
-                        initialZoom: 15.0,
+                        initialZoom: 13.0,
                         onTap: (tapPosition, point) {
                           setState(() {
                             _showSearchResults = false;
@@ -110,6 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         MarkerLayer(
                           markers: mapProvider.markers,
+                          rotate: false,
                         ),
                         PolylineLayer(
                           polylines: mapProvider.polylines,

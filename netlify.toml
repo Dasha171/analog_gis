@@ -1,6 +1,6 @@
 [build]
   publish = "build/web"
-  command = "flutter config --enable-web && flutter pub get && flutter build web --release --no-tree-shake-icons --no-wasm-dry-run --dart-define=FLUTTER_WEB_USE_SKIA=true"
+  command = "chmod +x build_web.sh && ./build_web.sh"
 
 [build.environment]
   NODE_VERSION = "18"

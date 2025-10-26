@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as latlng;
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/poi_model.dart';
 import '../models/route_model.dart';
+import '../models/organization_model.dart';
+import '../services/database_service.dart';
 
 class MapProvider extends ChangeNotifier {
   MapController? _mapController;
@@ -11,11 +14,12 @@ class MapProvider extends ChangeNotifier {
   List<Marker> _markers = [];
   List<Polyline> _polylines = [];
   List<POI> _pois = [];
-  RouteInfo? _currentRoute;
+  RouteResult? _currentRoute;
   bool _isLoading = false;
   String _mapStyle = 'standard';
   String _currentLocationText = 'Определяем местоположение...';
   bool _isMapLoaded = false;
+  final DatabaseService _databaseService = DatabaseService();
 
   // Default camera position (Almaty, Kazakhstan)
   static const latlng.LatLng _initialCameraPosition = latlng.LatLng(43.238949, 76.889709);
@@ -26,7 +30,7 @@ class MapProvider extends ChangeNotifier {
   List<Marker> get markers => _markers;
   List<Polyline> get polylines => _polylines;
   List<POI> get pois => _pois;
-  RouteInfo? get currentRoute => _currentRoute;
+  RouteResult? get currentRoute => _currentRoute;
   bool get isLoading => _isLoading;
   String get mapStyle => _mapStyle;
   latlng.LatLng get initialCameraPosition => _initialCameraPosition;
@@ -39,47 +43,48 @@ class MapProvider extends ChangeNotifier {
     _isMapLoaded = true;
     // Clear any existing markers before getting current location
     _markers.clear();
-    // Get current location when map is created
-    getCurrentLocation();
+    // Get current location asynchronously (не блокирует UI)
+    Future.microtask(() => getCurrentLocation());
     notifyListeners();
   }
 
   Future<void> getCurrentLocation() async {
+    // Проверяем кэшированную позицию (не старше 5 минут)
+    final cachedLocation = await _getCachedLocation();
+    if (cachedLocation != null) {
+      _currentLocation = cachedLocation;
+      _currentLocationText = 'Широта: ${cachedLocation.latitude.toStringAsFixed(6)}, Долгота: ${cachedLocation.longitude.toStringAsFixed(6)}';
+      _addCurrentLocationMarker();
+      if (_mapController != null) {
+        _mapController!.move(_currentLocation!, 15.0);
+      }
+      return;
+    }
+
     _isLoading = true;
     notifyListeners();
 
     try {
-      // Check if location services are enabled
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        print('Location services are disabled');
-        _isLoading = false;
-        notifyListeners();
-        return;
-      }
-
+      // Быстрая проверка разрешений
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          print('Location permission denied');
-          _isLoading = false;
-          notifyListeners();
+          _useFallbackLocation();
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        print('Location permission denied forever');
-        _isLoading = false;
-        notifyListeners();
+        _useFallbackLocation();
         return;
       }
 
       print('Getting current position...');
+      // Используем более быструю точность и короткий timeout
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.medium, // Изменено с high на medium для скорости
-        timeLimit: const Duration(seconds: 5), // Уменьшено время ожидания
+        desiredAccuracy: LocationAccuracy.medium, // Быстрее чем high
+        timeLimit: const Duration(seconds: 5), // Короче timeout
       );
 
       print('Position received: ${position.latitude}, ${position.longitude}');
@@ -87,26 +92,64 @@ class MapProvider extends ChangeNotifier {
       _currentLocation = latlng.LatLng(position.latitude, position.longitude);
       _currentLocationText = 'Широта: ${position.latitude.toStringAsFixed(6)}, Долгота: ${position.longitude.toStringAsFixed(6)}';
 
+      // Кэшируем позицию
+      await _cacheLocation(_currentLocation!);
+
       if (_mapController != null) {
         print('Moving map to current location');
         _mapController!.move(_currentLocation!, 15.0);
       }
 
-      // Add current location marker
       _addCurrentLocationMarker();
 
     } catch (e) {
       print('Error getting current location: $e');
-      // Fallback to Almaty if geolocation fails
-      _currentLocation = const latlng.LatLng(43.238949, 76.889709);
-      if (_mapController != null) {
-        _mapController!.move(_currentLocation!, 15.0);
-      }
-      _addCurrentLocationMarker();
+      _useFallbackLocation();
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void _useFallbackLocation() {
+    _currentLocation = const latlng.LatLng(43.238949, 76.889709);
+    _currentLocationText = 'Используется местоположение по умолчанию (Алматы)';
+    if (_mapController != null) {
+      _mapController!.move(_currentLocation!, 15.0);
+    }
+    _addCurrentLocationMarker();
+  }
+
+  // Кэширование геолокации
+  Future<void> _cacheLocation(latlng.LatLng location) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('cached_latitude', location.latitude.toString());
+      await prefs.setString('cached_longitude', location.longitude.toString());
+      await prefs.setInt('cached_location_timestamp', DateTime.now().millisecondsSinceEpoch);
+    } catch (e) {
+      print('Error caching location: $e');
+    }
+  }
+
+  Future<latlng.LatLng?> _getCachedLocation() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final latStr = prefs.getString('cached_latitude');
+      final lngStr = prefs.getString('cached_longitude');
+      final timestamp = prefs.getInt('cached_location_timestamp');
+
+      if (latStr != null && lngStr != null && timestamp != null) {
+        final cacheAge = DateTime.now().millisecondsSinceEpoch - timestamp;
+        // Кэш действителен 5 минут
+        if (cacheAge < 5 * 60 * 1000) {
+          return latlng.LatLng(double.parse(latStr), double.parse(lngStr));
+        }
+      }
+    } catch (e) {
+      print('Error reading cached location: $e');
+    }
+    return null;
   }
 
   void _addCurrentLocationMarker() {
@@ -188,7 +231,7 @@ class MapProvider extends ChangeNotifier {
     }
   }
 
-  void setRoute(RouteInfo route) {
+  void setRoute(RouteResult route) {
     _currentRoute = route;
     _polylines.clear();
 
@@ -197,10 +240,23 @@ class MapProvider extends ChangeNotifier {
           .map((point) => latlng.LatLng(point.latitude, point.longitude))
           .toList();
 
+      // Определяем цвет маршрута
+      Color routeColor;
+      if (route.transportType == TransportType.car) {
+        // Зеленый для самого быстрого маршрута на машине
+        routeColor = Colors.green;
+      } else if (route.transportType == TransportType.bus) {
+        // Синий для маршрута на автобусе (без пробок)
+        routeColor = Colors.blue;
+      } else {
+        // Для остальных видов транспорта используем цвет из маршрута
+        routeColor = route.color == RouteColor.green ? Colors.green : Colors.blue;
+      }
+
       _polylines.add(
         Polyline(
           points: polylinePoints,
-          color: Colors.blue,
+          color: routeColor,
           strokeWidth: 5,
         ),
       );
@@ -228,15 +284,13 @@ class MapProvider extends ChangeNotifier {
 
   void zoomIn() {
     if (_mapController != null) {
-      final newZoom = (_mapController!.camera.zoom + 1).clamp(3.0, 18.0);
-      _mapController!.move(_mapController!.camera.center, newZoom);
+      _mapController!.move(_mapController!.camera.center, _mapController!.camera.zoom + 1);
     }
   }
 
   void zoomOut() {
     if (_mapController != null) {
-      final newZoom = (_mapController!.camera.zoom - 1).clamp(3.0, 18.0);
-      _mapController!.move(_mapController!.camera.center, newZoom);
+      _mapController!.move(_mapController!.camera.center, _mapController!.camera.zoom - 1);
     }
   }
 
@@ -262,5 +316,53 @@ class MapProvider extends ChangeNotifier {
         marker.key?.toString().startsWith('search_') == true ||
         marker.key?.toString().contains('search_') == true);
     notifyListeners();
+  }
+
+  // Загрузка организаций и создание маркеров
+  Future<void> loadOrganizations() async {
+    try {
+      final organizations = await _databaseService.getAllOrganizations();
+      
+      // Удаляем старые маркеры организаций
+      _markers.removeWhere((marker) => 
+          marker.key?.toString().startsWith('org_') == true);
+      
+      // Создаем новые маркеры для организаций
+      for (final org in organizations) {
+        if (org.latitude != 0.0 && org.longitude != 0.0) {
+          final marker = Marker(
+            key: ValueKey('org_${org.id}'),
+            point: latlng.LatLng(org.latitude, org.longitude),
+            width: 40,
+            height: 40,
+            child: GestureDetector(
+              onTap: () => _showOrganizationInfo(org),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: Icon(
+                  Icons.business,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+          );
+          _markers.add(marker);
+        }
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      print('Ошибка загрузки организаций: $e');
+    }
+  }
+
+  void _showOrganizationInfo(Organization org) {
+    // TODO: Показать информацию об организации
+    print('Организация: ${org.name}');
   }
 }

@@ -62,13 +62,6 @@ class _ManagerPanelScreenState extends State<ManagerPanelScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: themeProvider.backgroundColor,
-                        boxShadow: [
-                          BoxShadow(
-                            color: themeProvider.textColor.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
                       ),
                       child: Row(
                         children: [
@@ -181,8 +174,8 @@ class _ManagerPanelScreenState extends State<ManagerPanelScreen> {
 
   Widget _buildStatsTab(BuildContext context, ThemeProvider themeProvider, AdvertisementProvider adProvider, AuthProvider authProvider) {
     final managerAds = adProvider.advertisements.where((ad) => ad.managerId == authProvider.currentUser?.id).toList();
-    final totalViews = managerAds.fold(0, (sum, ad) => sum + ad.views);
-    final totalClicks = managerAds.fold(0, (sum, ad) => sum + ad.clicks);
+    final totalViews = managerAds.fold(0, (sum, ad) => sum + (ad.views ?? 0));
+    final totalClicks = managerAds.fold(0, (sum, ad) => sum + (ad.clicks ?? 0));
     final approvedAds = managerAds.where((ad) => ad.status == 'approved').length;
     final pendingAds = managerAds.where((ad) => ad.status == 'pending').length;
 
@@ -253,13 +246,6 @@ class _ManagerPanelScreenState extends State<ManagerPanelScreen> {
             decoration: BoxDecoration(
               color: themeProvider.cardColor,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: themeProvider.textColor.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,13 +368,6 @@ class _ManagerPanelScreenState extends State<ManagerPanelScreen> {
       decoration: BoxDecoration(
         color: themeProvider.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: themeProvider.textColor.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -479,13 +458,6 @@ class _ManagerPanelScreenState extends State<ManagerPanelScreen> {
       decoration: BoxDecoration(
         color: themeProvider.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: themeProvider.textColor.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Row(
         children: [

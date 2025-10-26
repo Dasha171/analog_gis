@@ -9,6 +9,7 @@ import 'reviews_screen.dart';
 import 'visited_places_screen.dart';
 import 'photos_screen.dart';
 import 'friends_screen.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -92,7 +93,7 @@ class ProfileScreen extends StatelessWidget {
                               
                               // Имя пользователя
                               Text(
-                                authProvider.currentUser?.fullName ?? 'Пользователь',
+                                authProvider.currentUser?.fullName ?? 'Имя не указано',
                                 style: TextStyle(
                                   color: themeProvider.textColor,
                                   fontSize: 24,
@@ -114,7 +115,12 @@ class ProfileScreen extends StatelessWidget {
                               // Кнопка редактирования
                               OutlinedButton.icon(
                                 onPressed: () {
-                                  // TODO: Редактировать профиль
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const EditProfileScreen(),
+                                    ),
+                                  );
                                 },
                                 icon: const Icon(Icons.edit, color: Color(0xFF0C79FE)),
                                 label: const Text(
@@ -321,29 +327,32 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 48),
             
             // Кнопка входа
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const LoginScreen(),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const LoginScreen(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0C79FE),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0C79FE),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  elevation: 0,
                 ),
-                elevation: 0,
-              ),
-              child: const Text(
-                'Войти',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                child: const Text(
+                  'Войти',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),

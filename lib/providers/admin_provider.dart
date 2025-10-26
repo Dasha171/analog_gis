@@ -3,6 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'auth_provider.dart';
 import 'advertisement_provider.dart';
+import '../services/unified_database_service.dart';
+import '../models/user_model.dart';
+import '../models/manager_permissions_model.dart';
+import '../utils/database_diagnostic.dart';
 
 class AdminUser {
   final String id;
@@ -110,12 +114,14 @@ class AdminProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isAdmin = false;
   AuthProvider? _authProvider;
+  final UnifiedDatabaseService _databaseService = UnifiedDatabaseService();
 
   // Getters
   List<AdminUser> get users => _users;
   AppStats get appStats => _appStats;
   bool get isLoading => _isLoading;
   bool get isAdmin => _isAdmin;
+  UnifiedDatabaseService get databaseService => _databaseService;
 
   // Проверка, является ли пользователь администратором
   Future<bool> checkIfAdmin(String email) async {
@@ -131,46 +137,91 @@ class AdminProvider extends ChangeNotifier {
     // Обновляем статистику на основе реальных данных пользователей
     await updateStats();
     _setLoading(false);
+    
+    // ВАЖНО: Уведомляем UI об инициализации
+    notifyListeners();
+    print('🔔 AdminProvider инициализирован, UI уведомлен');
   }
 
   // Загрузка данных пользователей
   Future<void> _loadUsersData() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      // Диагностика перед загрузкой
+      print('🔍 ДИАГНОСТИКА ПЕРЕД ЗАГРУЗКОЙ ПОЛЬЗОВАТЕЛЕЙ:');
+      await DatabaseDiagnostic.printAllData();
       
-      // Загружаем всех пользователей из SharedPreferences
-      final usersJson = prefs.getString('all_users') ?? '[]';
-      final usersList = json.decode(usersJson) as List;
+      // Сначала пытаемся загрузить из UnifiedDatabaseService
+      final dbUsers = await _databaseService.getAllUsers();
       
-      print('Загружено пользователей из SharedPreferences: ${usersList.length}');
-      for (var userData in usersList) {
-        print('Пользователь: ${userData['firstName']} ${userData['lastName']} (${userData['email']})');
+      print('🔍 ПОЛЬЗОВАТЕЛИ ИЗ UNIFIED_DATABASE_SERVICE: ${dbUsers.length}');
+      for (final user in dbUsers) {
+        print('  - ${user.email}: ${user.fullName} (${user.role})');
       }
       
-      // Конвертируем в AdminUser
-      _users = usersList.map((userData) {
-        return AdminUser(
-          id: userData['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-          name: userData['firstName'] != null && userData['lastName'] != null 
-              ? '${userData['firstName']} ${userData['lastName']}'
-              : userData['name'] ?? userData['fullName'] ?? 'Пользователь',
-          email: userData['email'] ?? '',
-          role: userData['role'] ?? 'user',
-          createdAt: userData['createdAt'] != null 
-              ? DateTime.parse(userData['createdAt'])
-              : DateTime.now(),
-          isActive: userData['isActive'] ?? true,
-          permissions: _getDefaultPermissions(userData['role'] ?? 'user'),
-          managedCities: List<String>.from(userData['managedCities'] ?? []),
-        );
-      }).toList();
+      if (dbUsers.isNotEmpty) {
+        print('Загружено пользователей из UnifiedDatabaseService: ${dbUsers.length}');
+        
+        // Конвертируем User в AdminUser
+        _users = dbUsers.map((user) {
+          return AdminUser(
+            id: user.id,
+            name: user.fullName,
+            email: user.email,
+            role: user.role,
+            createdAt: user.createdAt,
+            isActive: !user.isBlocked,
+            permissions: _getDefaultPermissions(user.role),
+            managedCities: [], // Пока не реализовано
+          );
+        }).toList();
+        
+        print('Загружены пользователи из базы данных: ${_users.length}');
+        for (var user in _users) {
+          print('Пользователь: ${user.name} (${user.email}) - ${user.role}');
+        }
+      } else {
+        print('❌ НЕТ ПОЛЬЗОВАТЕЛЕЙ В UNIFIED_DATABASE_SERVICE!');
+        
+        // Проверяем старые данные
+        final prefs = await SharedPreferences.getInstance();
+        final oldUsersJson = prefs.getString('users') ?? '[]';
+        final oldUsersList = json.decode(oldUsersJson) as List;
+        
+        print('🔍 СТАРЫЕ ДАННЫЕ: ${oldUsersList.length} пользователей');
+        
+        if (oldUsersList.isNotEmpty) {
+          print('⚠️ НАЙДЕНЫ СТАРЫЕ ДАННЫЕ! Мигрируем...');
+          await _databaseService.migrateData();
+          
+          // Повторно загружаем
+          final migratedUsers = await _databaseService.getAllUsers();
+          print('🔍 ПОСЛЕ МИГРАЦИИ: ${migratedUsers.length} пользователей');
+          
+          _users = migratedUsers.map((user) {
+            return AdminUser(
+              id: user.id,
+              name: user.fullName,
+              email: user.email,
+              role: user.role,
+              createdAt: user.createdAt,
+              isActive: !user.isBlocked,
+              permissions: _getDefaultPermissions(user.role),
+              managedCities: [],
+            );
+          }).toList();
+        }
+      }
 
       // Если нет пользователей, создаем демо данные
       if (_users.isEmpty) {
         await _createDemoUsers();
       }
 
-      print('Загружены пользователи: ${_users.length}');
+      print('Итого загружено пользователей: ${_users.length}');
+      
+      // ВАЖНО: Уведомляем UI об изменении данных
+      notifyListeners();
+      print('🔔 UI уведомлен об изменении данных пользователей: ${_users.length}');
     } catch (e) {
       print('Ошибка загрузки пользователей: $e');
     }
@@ -226,6 +277,10 @@ class AdminProvider extends ChangeNotifier {
       ),
     ];
     await _saveUsersData();
+    
+    // ВАЖНО: Уведомляем UI об изменении данных
+    notifyListeners();
+    print('🔔 UI уведомлен о создании демо пользователей: ${_users.length}');
   }
 
   // Загрузка статистики приложения
@@ -276,34 +331,6 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
-  // Синхронизация с all_users
-  Future<void> _syncToAllUsers() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      
-      // Загружаем текущий список all_users
-      final allUsersJson = prefs.getString('all_users') ?? '[]';
-      final allUsersList = json.decode(allUsersJson) as List;
-      
-      // Обновляем данные в all_users на основе admin_users
-      for (var adminUser in _users) {
-        final userIndex = allUsersList.indexWhere((u) => u['email'] == adminUser.email);
-        if (userIndex != -1) {
-          // Обновляем существующего пользователя
-          allUsersList[userIndex]['role'] = adminUser.role;
-          allUsersList[userIndex]['managedCities'] = adminUser.managedCities;
-          allUsersList[userIndex]['isActive'] = adminUser.isActive;
-        }
-      }
-      
-      // Сохраняем обновленный список
-      await prefs.setString('all_users', json.encode(allUsersList));
-      print('Данные синхронизированы с all_users');
-    } catch (e) {
-      print('Ошибка синхронизации с all_users: $e');
-    }
-  }
-
   // Сохранение статистики
   Future<void> _saveAppStats() async {
     try {
@@ -335,6 +362,24 @@ class AdminProvider extends ChangeNotifier {
 
       _users.add(user);
       await _saveUsersData();
+      
+      // Также сохраняем в единую базу данных
+      final unifiedUser = User(
+        id: user.id,
+        firstName: user.name.split(' ').first,
+        lastName: user.name.split(' ').length > 1 ? user.name.split(' ').last : '',
+        email: user.email,
+        phone: '',
+        createdAt: user.createdAt,
+        isEmailVerified: true,
+        role: user.role,
+        isBlocked: !user.isActive,
+        lastLoginAt: DateTime.now(),
+      );
+      
+      await _databaseService.saveUser(unifiedUser);
+      print('✅ Пользователь добавлен в админ панель и единую базу: ${user.email}');
+      
       notifyListeners();
       return true;
     } catch (e) {
@@ -391,7 +436,15 @@ class AdminProvider extends ChangeNotifier {
         
         // Сохраняем в обеих системах
         await _saveUsersData();
-        await _syncToAllUsers();
+        
+        // Обновляем в базе данных
+        final user = await _databaseService.getUserById(userId);
+        if (user != null) {
+          final updatedUser = user.copyWith(role: newRole);
+          await _databaseService.updateUser(updatedUser);
+          print('✅ Роль пользователя обновлена в БД: ${user.email} -> $newRole');
+        }
+        
         notifyListeners();
         
         print('Роль пользователя обновлена: ${_users[userIndex].name} -> $newRole');
@@ -419,7 +472,6 @@ class AdminProvider extends ChangeNotifier {
         
         // Сохраняем в обеих системах
         await _saveUsersData();
-        await _syncToAllUsers();
         notifyListeners();
         
         print('Статус пользователя изменен: ${_users[userIndex].name} -> ${_users[userIndex].isActive ? 'активен' : 'заблокирован'}');
@@ -473,6 +525,41 @@ class AdminProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Принудительное сохранение всех пользователей
+  Future<void> forceSaveAllUsers() async {
+    try {
+      print('🔍 ПРИНУДИТЕЛЬНОЕ СОХРАНЕНИЕ ВСЕХ ПОЛЬЗОВАТЕЛЕЙ...');
+      
+      // Сохраняем всех пользователей из списка админ панели
+      for (final adminUser in _users) {
+        final user = User(
+          id: adminUser.id,
+          firstName: adminUser.name.split(' ').first,
+          lastName: adminUser.name.split(' ').length > 1 ? adminUser.name.split(' ').last : '',
+          email: adminUser.email,
+          phone: '',
+          createdAt: adminUser.createdAt,
+          isEmailVerified: true,
+          role: adminUser.role,
+          isBlocked: !adminUser.isActive,
+          lastLoginAt: DateTime.now(),
+        );
+        
+        await _databaseService.saveUser(user);
+        print('✅ Сохранен пользователь: ${user.email}');
+      }
+      
+      // Обновляем данные
+      await _loadUsersData();
+      notifyListeners();
+      
+      print('✅ Все пользователи принудительно сохранены');
+      
+    } catch (e) {
+      print('❌ Ошибка принудительного сохранения: $e');
+    }
+  }
+
   // Обновление городов менеджера
   Future<void> updateManagerCities(String userId, List<String> cityIds) async {
     try {
@@ -491,7 +578,24 @@ class AdminProvider extends ChangeNotifier {
         
         // Сохраняем в обеих системах
         await _saveUsersData();
-        await _syncToAllUsers();
+        
+        // Обновляем в базе данных
+        final user = await _databaseService.getUserById(userId);
+        if (user != null) {
+          // Создаем ManagerPermissions для сохранения городов
+          final permissions = ManagerPermissions(
+            managerId: userId,
+            cityIds: cityIds,
+            canManageAds: true,
+            canManageOrganizations: true,
+            createdAt: DateTime.now(),
+            allowedCities: cityIds,
+            canAddAds: true,
+          );
+          await _databaseService.saveManagerPermissions(permissions);
+          print('✅ Города менеджера сохранены в БД: ${user.email} - ${cityIds.length} городов');
+        }
+        
         notifyListeners();
         
         print('Города менеджера обновлены: ${_users[userIndex].name} - ${cityIds.length} городов');

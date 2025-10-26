@@ -17,6 +17,17 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Загружаем код приглашения для текущего пользователя
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final friendsProvider = Provider.of<FriendsProvider>(context, listen: false);
+      // Получаем ID текущего пользователя (в реальном приложении из AuthProvider)
+      friendsProvider.loadInvitationCode('current_user_id');
+    });
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     super.dispose();

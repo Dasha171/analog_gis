@@ -3,12 +3,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/business_user_model.dart';
 import '../models/organization_model.dart';
+import '../services/database_service.dart';
 
 class BusinessProvider extends ChangeNotifier {
   BusinessUser? _currentBusinessUser;
   List<Organization> _organizations = [];
   bool _isLoading = false;
   String? _errorMessage;
+  final DatabaseService _databaseService = DatabaseService();
 
   BusinessUser? get currentBusinessUser => _currentBusinessUser;
   List<Organization> get organizations => _organizations;
@@ -51,14 +53,13 @@ class BusinessProvider extends ChangeNotifier {
     if (_currentBusinessUser == null) return;
     
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final organizationsJson = prefs.getStringList('organizations_${_currentBusinessUser!.id}') ?? [];
-      
-      _organizations = organizationsJson
-          .map((json) => Organization.fromJson(jsonDecode(json)))
-          .toList();
+      // Загружаем организации из базы данных для текущего пользователя
+      final allOrganizations = await _databaseService.getAllOrganizations();
+      _organizations = allOrganizations.where((org) => org.ownerId == _currentBusinessUser!.id).toList();
+      notifyListeners();
     } catch (e) {
       print('Ошибка загрузки организаций: $e');
+      _organizations = [];
     }
   }
 
@@ -155,8 +156,10 @@ class BusinessProvider extends ChangeNotifier {
 
   Future<bool> addOrganization({
     required String name,
+    required String description,
     required String address,
     required String phone,
+    required String email,
     required String category,
     String? website,
     double? latitude,
@@ -170,20 +173,25 @@ class BusinessProvider extends ChangeNotifier {
     try {
       final organization = Organization(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        businessUserId: _currentBusinessUser!.id,
+        ownerId: _currentBusinessUser!.id,
         name: name,
-        address: address,
-        phone: phone,
+        description: description,
         category: category,
-        website: website,
-        latitude: latitude,
-        longitude: longitude,
+        address: address,
+        latitude: latitude ?? 0.0,
+        longitude: longitude ?? 0.0,
+        phone: phone,
+        email: email,
+        website: website ?? '',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
 
+      // Сохраняем организацию в базу данных
+      await _databaseService.insertOrganization(organization);
+      
+      // Обновляем локальный список
       _organizations.add(organization);
-      await _saveOrganizations();
       
       // Обновляем количество организаций у пользователя
       _currentBusinessUser = _currentBusinessUser!.copyWith(
@@ -250,20 +258,6 @@ class BusinessProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> logout() async {
-    _currentBusinessUser = null;
-    _organizations.clear();
-    
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('business_user');
-    } catch (e) {
-      print('Ошибка выхода: $e');
-    }
-    
-    notifyListeners();
-  }
-
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
@@ -276,5 +270,21 @@ class BusinessProvider extends ChangeNotifier {
 
   void _clearError() {
     _errorMessage = null;
+  }
+
+  // Выход из бизнес-аккаунта
+  Future<void> logout() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('business_user');
+      
+      _currentBusinessUser = null;
+      _organizations = [];
+      _errorMessage = null;
+      
+      notifyListeners();
+    } catch (e) {
+      print('Ошибка выхода из бизнес-аккаунта: $e');
+    }
   }
 }

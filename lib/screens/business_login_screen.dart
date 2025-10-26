@@ -263,6 +263,12 @@ class _BusinessLoginScreenState extends State<BusinessLoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final businessProvider = context.read<BusinessProvider>();
+    
+    // Сначала выходим из текущего аккаунта, если он есть
+    if (businessProvider.isAuthenticated) {
+      await businessProvider.logout();
+    }
+    
     final success = await businessProvider.loginBusinessUser(
       email: _emailController.text.trim(),
       phone: _phoneController.text.trim(),

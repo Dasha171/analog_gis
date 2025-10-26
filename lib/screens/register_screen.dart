@@ -313,13 +313,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       // Кнопка регистрации через Google
                       OutlinedButton.icon(
                         onPressed: _isLoading ? null : _handleGoogleRegister,
-                        icon: Image.asset(
-                          'assets/icons/google.png',
-                          width: 20,
-                          height: 20,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Icon(Icons.g_mobiledata, color: themeProvider.textColor);
-                          },
+                        icon: Icon(
+                          Icons.g_mobiledata,
+                          color: themeProvider.textColor,
+                          size: 20,
                         ),
                         label: Text(
                           'Зарегистрироваться через Google',
@@ -432,6 +429,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       );
+    } else {
+      // Проверяем, является ли ошибка связанной с дублированием регистрации
+      final errorMessage = authProvider.errorMessage ?? '';
+      if (errorMessage.contains('уже зарегистрирован')) {
+        final themeProvider = context.read<ThemeProvider>();
+        _showUserExistsDialog(context, themeProvider);
+      }
     }
   }
 
@@ -450,9 +454,69 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (success) {
       Navigator.pop(context);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authProvider.errorMessage ?? 'Ошибка регистрации через Google')),
-      );
+      // Проверяем, является ли ошибка связанной с дублированием регистрации
+      final errorMessage = authProvider.errorMessage ?? '';
+      if (errorMessage.contains('уже зарегистрирован')) {
+        final themeProvider = context.read<ThemeProvider>();
+        _showUserExistsDialog(context, themeProvider);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
     }
+  }
+
+  void _showUserExistsDialog(BuildContext context, ThemeProvider themeProvider) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: themeProvider.cardColor,
+          title: Text(
+            'Пользователь уже зарегистрирован',
+            style: TextStyle(
+              color: themeProvider.textColor,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            'Пользователь с данным email уже существует в системе. Пожалуйста, войдите в свой аккаунт.',
+            style: TextStyle(
+              color: themeProvider.textColor,
+              fontSize: 14,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Отмена',
+                style: TextStyle(
+                  color: themeProvider.textColor.withOpacity(0.7),
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context); // Закрываем диалог
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const LoginScreen(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0C79FE),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Войти'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

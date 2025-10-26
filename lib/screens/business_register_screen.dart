@@ -345,6 +345,12 @@ class _BusinessRegisterScreenState extends State<BusinessRegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final businessProvider = context.read<BusinessProvider>();
+    
+    // Сначала выходим из текущего аккаунта, если он есть
+    if (businessProvider.isAuthenticated) {
+      await businessProvider.logout();
+    }
+    
     final success = await businessProvider.registerBusinessUser(
       name: _firstNameController.text.trim(),
       surname: _lastNameController.text.trim(),

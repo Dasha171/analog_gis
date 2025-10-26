@@ -5,6 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/user_model.dart';
 import '../services/email_service_simple.dart';
+import '../services/unified_database_service.dart';
+import '../services/cross_platform_sync_service.dart';
+import '../utils/database_diagnostic.dart';
 
 class AuthProvider extends ChangeNotifier {
   User? _currentUser;
@@ -19,6 +22,7 @@ class AuthProvider extends ChangeNotifier {
     scopes: ['email', 'profile'],
   );
   final EmailServiceSimple _emailService = EmailServiceSimple();
+  final UnifiedDatabaseService _databaseService = UnifiedDatabaseService();
 
   User? get currentUser => _currentUser;
   bool get isAuthenticated => _currentUser != null;
@@ -31,7 +35,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   AuthProvider() {
-    _loadUserFromStorage();
+    // Загружаем пользователя в фоне, не блокируя UI
+    Future.microtask(() => _loadUserFromStorage());
   }
 
   /// Загружает пользователя из локального хранилища
@@ -76,40 +81,16 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _saveUserToStorage(User user) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      
+      // Сохраняем текущего пользователя
       await prefs.setString('current_user', json.encode(user.toJson()));
       
-      // Также сохраняем в список всех пользователей
-      await _addUserToAllUsers(user);
+      // Также сохраняем в единую базу данных
+      await _databaseService.saveUser(user);
       
-      print('Пользователь сохранен в хранилище: ${user.fullName}');
+      print('✅ Пользователь сохранен в хранилище и единой базе: ${user.fullName}');
     } catch (e) {
-      print('Ошибка сохранения пользователя: $e');
-    }
-  }
-
-  /// Добавление пользователя в список всех пользователей
-  Future<void> _addUserToAllUsers(User user) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final allUsersJson = prefs.getString('all_users') ?? '[]';
-      final allUsersList = json.decode(allUsersJson) as List;
-      
-      // Проверяем, есть ли уже такой пользователь
-      final existingUserIndex = allUsersList.indexWhere((u) => u['email'] == user.email);
-      
-      if (existingUserIndex != -1) {
-        // Обновляем существующего пользователя
-        allUsersList[existingUserIndex] = user.toJson();
-      } else {
-        // Добавляем нового пользователя
-        allUsersList.add(user.toJson());
-      }
-      
-      await prefs.setString('all_users', json.encode(allUsersList));
-      print('Пользователь добавлен в общий список: ${user.email}');
-      print('Данные пользователя: firstName=${user.firstName}, lastName=${user.lastName}, fullName=${user.fullName}');
-    } catch (e) {
-      print('Ошибка добавления пользователя в общий список: $e');
+      print('❌ Ошибка сохранения пользователя: $e');
     }
   }
 
@@ -142,6 +123,44 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Проверяет, зарегистрирован ли пользователь с данным email
+  Future<bool> isUserRegistered(String email) async {
+    try {
+      final existingUser = await _databaseService.getUserByEmail(email);
+      return existingUser != null;
+    } catch (e) {
+      print('Ошибка проверки регистрации: $e');
+      return false;
+    }
+  }
+
+  /// Принудительная синхронизация всех пользователей
+  Future<void> forceSyncAllUsers() async {
+    try {
+      print('🔄 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ ВСЕХ ПОЛЬЗОВАТЕЛЕЙ...');
+      
+      // Получаем всех пользователей из единой базы
+      final allUsers = await _databaseService.getAllUsers();
+      print('🔍 Найдено пользователей в единой базе: ${allUsers.length}');
+      
+      // Синхронизируем через CrossPlatformSyncService
+      await CrossPlatformSyncService().syncUsers();
+      
+      // Проверяем результат
+      final syncedUsers = await CrossPlatformSyncService().loadSyncedUsers();
+      print('🔍 Синхронизировано пользователей: ${syncedUsers.length}');
+      
+      for (final user in syncedUsers) {
+        print('  - ${user.email}: ${user.fullName} (${user.role})');
+      }
+      
+      print('✅ Синхронизация завершена');
+      
+    } catch (e) {
+      print('❌ Ошибка синхронизации: $e');
+    }
+  }
+
   /// Регистрация через Google
   Future<bool> signUpWithGoogle() async {
     try {
@@ -151,6 +170,14 @@ class AuthProvider extends ChangeNotifier {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         _setError('Регистрация отменена');
+        _setLoading(false);
+        return false;
+      }
+
+      // Проверяем, не зарегистрирован ли уже пользователь с этим email
+      final isRegistered = await isUserRegistered(googleUser.email);
+      if (isRegistered) {
+        _setError('Пользователь с email ${googleUser.email} уже зарегистрирован. Пожалуйста, войдите в систему.');
         _setLoading(false);
         return false;
       }
@@ -169,10 +196,18 @@ class AuthProvider extends ChangeNotifier {
         profileImageUrl: googleUser.photoUrl,
         createdAt: DateTime.now(),
         isEmailVerified: true, // Google аккаунты уже верифицированы
+        role: googleUser.email == 'admin@gmail.com' ? 'admin' : 'user', // Устанавливаем роль
+        lastLoginAt: DateTime.now(),
       );
 
       _currentUser = user;
       await _saveUserToStorage(user);
+      
+      print('✅ Пользователь зарегистрирован через Google: ${user.email}');
+      
+      // Диагностика после регистрации
+      print('🔍 ДИАГНОСТИКА ПОСЛЕ РЕГИСТРАЦИИ ЧЕРЕЗ GOOGLE:');
+      await DatabaseDiagnostic.printAllData();
       
       _setLoading(false);
       return true;
@@ -193,6 +228,14 @@ class AuthProvider extends ChangeNotifier {
     try {
       _setLoading(true);
       _clearError();
+
+      // Проверяем, не зарегистрирован ли уже пользователь с этим email
+      final isRegistered = await isUserRegistered(email);
+      if (isRegistered) {
+        _setError('Пользователь с email $email уже зарегистрирован. Пожалуйста, войдите в систему.');
+        _setLoading(false);
+        return false;
+      }
 
       // Отправляем код подтверждения
       final success = await _emailService.sendVerificationCode(email);
@@ -220,8 +263,12 @@ class AuthProvider extends ChangeNotifier {
         isEmailVerified: false,
       );
 
+      print('🔍 СОЗДАН ВРЕМЕННЫЙ ПОЛЬЗОВАТЕЛЬ: ${user.email}');
       _currentUser = user;
       await _saveUserToStorage(user);
+      
+      // НЕ сохраняем в базу данных до подтверждения кода
+      print('🔍 ВРЕМЕННЫЙ ПОЛЬЗОВАТЕЛЬ НЕ СОХРАНЕН В БД (ждем подтверждения кода)');
       
       _setLoading(false);
       return true;
@@ -251,9 +298,21 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      // Обновляем пользователя как верифицированного
-      _currentUser = _currentUser!.copyWith(isEmailVerified: true);
-      await _saveUserToStorage(_currentUser!);
+      // Создаем верифицированного пользователя
+      final verifiedUser = _currentUser!.copyWith(
+        isEmailVerified: true,
+        role: _currentUser!.email == 'admin@gmail.com' ? 'admin' : 'user',
+        lastLoginAt: DateTime.now(),
+      );
+
+      _currentUser = verifiedUser;
+      await _saveUserToStorage(verifiedUser);
+      
+      print('✅ Пользователь зарегистрирован и сохранен: ${verifiedUser.email}');
+      
+      // Диагностика после регистрации
+      print('🔍 ДИАГНОСТИКА ПОСЛЕ РЕГИСТРАЦИИ:');
+      await DatabaseDiagnostic.printAllData();
       
       _setLoading(false);
       return true;
@@ -265,7 +324,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Вход в аккаунт
-  Future<bool> signInWithEmail(String email) async {
+  Future<bool> signInWithEmail(String email, {String? firstName, String? lastName, String? phone}) async {
     try {
       _setLoading(true);
       _clearError();
@@ -276,6 +335,15 @@ class AuthProvider extends ChangeNotifier {
         _setError('Ошибка отправки кода подтверждения');
         _setLoading(false);
         return false;
+      }
+
+      // Сохраняем данные для использования после верификации
+      if (firstName != null && lastName != null) {
+        _pendingRegistration[email] = json.encode({
+          'firstName': firstName,
+          'lastName': lastName,
+          'phone': phone ?? '',
+        });
       }
 
       // НЕ создаем пользователя до подтверждения кода
@@ -304,7 +372,7 @@ class AuthProvider extends ChangeNotifier {
 
       // Создаем пользователя после успешной верификации
       // Используем сохраненные данные регистрации или данные существующего пользователя
-      String firstName = 'Пользователь';
+      String firstName = 'Имя не указано';
       String lastName = '';
       String phone = '';
       
@@ -313,7 +381,7 @@ class AuthProvider extends ChangeNotifier {
         final registrationJson = _pendingRegistration[email];
         if (registrationJson != null) {
           final registrationData = json.decode(registrationJson);
-          firstName = registrationData['firstName'] ?? 'Пользователь';
+          firstName = registrationData['firstName'] ?? 'Имя не указано';
           lastName = registrationData['lastName'] ?? '';
           phone = registrationData['phone'] ?? '';
           _pendingRegistration.remove(email); // Удаляем после использования
@@ -333,10 +401,32 @@ class AuthProvider extends ChangeNotifier {
         phone: phone,
         createdAt: DateTime.now(),
         isEmailVerified: true,
+        role: email == 'admin@gmail.com' ? 'admin' : 'user', // Устанавливаем роль
+        lastLoginAt: DateTime.now(),
       );
 
       _currentUser = user;
       await _saveUserToStorage(user);
+      // Проверяем, существует ли пользователь в базе данных
+      final existingUser = await _databaseService.getUserByEmail(user.email);
+      if (existingUser != null) {
+        // Сохраняем существующую роль и обновляем только необходимые поля
+        final updatedUser = user.copyWith(
+          role: existingUser.role, // Сохраняем существующую роль
+          createdAt: existingUser.createdAt, // Сохраняем дату создания
+        );
+        await _databaseService.saveUser(updatedUser);
+        _currentUser = updatedUser;
+        await _saveUserToStorage(updatedUser);
+        print('✅ Пользователь обновлен: ${user.email} (роль: ${existingUser.role})');
+      } else {
+        // Создаем нового пользователя
+        print('✅ Пользователь добавлен: ${user.email}');
+        
+        // Диагностика после добавления
+        print('🔍 ДИАГНОСТИКА ПОСЛЕ ДОБАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯ В signInWithCode:');
+        await DatabaseDiagnostic.printAllData();
+      }
       
       _setLoading(false);
       return true;
@@ -413,5 +503,47 @@ class AuthProvider extends ChangeNotifier {
     if (isAdmin) return 'admin';
     if (isManager) return 'manager';
     return 'user';
+  }
+
+  // Получение всех пользователей (для админа)
+  Future<List<User>> getAllUsers() async {
+    try {
+      return await _databaseService.getAllUsers();
+    } catch (e) {
+      print('Ошибка получения пользователей: $e');
+      return [];
+    }
+  }
+
+  // Обновление роли пользователя (для админа)
+  Future<bool> updateUserRole(String userId, String newRole) async {
+    try {
+      final user = await _databaseService.getUserById(userId);
+      if (user != null) {
+        final updatedUser = user.copyWith(role: newRole);
+        await _databaseService.saveUser(updatedUser);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Ошибка обновления роли: $e');
+      return false;
+    }
+  }
+
+  // Блокировка/разблокировка пользователя (для админа)
+  Future<bool> toggleUserBlock(String userId) async {
+    try {
+      final user = await _databaseService.getUserById(userId);
+      if (user != null) {
+        final updatedUser = user.copyWith(isBlocked: !user.isBlocked);
+        await _databaseService.saveUser(updatedUser);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Ошибка блокировки пользователя: $e');
+      return false;
+    }
   }
 }

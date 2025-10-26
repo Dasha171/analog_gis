@@ -17,6 +17,11 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    
+    // Suppress Java warnings for all subprojects
+    tasks.withType<JavaCompile> {
+        options.compilerArgs.addAll(listOf("-Xlint:-options"))
+    }
 }
 
 tasks.register<Delete>("clean") {

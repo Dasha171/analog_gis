@@ -17,12 +17,13 @@ import 'profile_screen.dart';
 import 'offline_maps_screen.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
-import '../widgets/optimized_map_widget.dart';
+import '../widgets/business_modal_widget.dart';
 import '../providers/user_actions_provider.dart';
 import '../providers/friends_provider.dart';
 import '../providers/advertisement_provider.dart';
 import 'admin_panel_screen.dart';
 import 'manager_panel_screen.dart';
+import 'route_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,40 +32,34 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _showSearchResults = false;
   final MapController _mapController = MapController();
   bool _isBottomSheetExpanded = false;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
   
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchChanged);
-    
-    // Инициализация анимации
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-    
+    // Откладываем инициализацию на следующий кадр
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MapProvider>().setMapController(_mapController);
+      _initializeProviders();
+    });
+  }
+
+  void _initializeProviders() {
+    // Инициализируем только критически важные провайдеры сразу
+    context.read<MapProvider>().setMapController(_mapController);
+    
+    // Остальные инициализируем асинхронно
+    Future.microtask(() {
       context.read<MapLayersProvider>().initializeLayers();
-      // Загружаем сессию пользователя при запуске приложения
       context.read<AuthProvider>().loadUserSession();
-    context.read<UserActionsProvider>().initialize();
-    context.read<FriendsProvider>().initialize();
-    context.read<AdvertisementProvider>().initialize();
+      context.read<UserActionsProvider>().initialize();
+      context.read<FriendsProvider>().initialize(context.read<AuthProvider>());
+      context.read<AdvertisementProvider>().initialize();
+      context.read<MapProvider>().loadOrganizations();
     });
   }
   
@@ -72,24 +67,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
-    _animationController.dispose();
     super.dispose();
   }
 
   void _onSearchChanged() {
-    final query = _searchController.text;
-    if (query.isNotEmpty) {
-      context.read<SearchProvider>().search(query);
-      setState(() {
-        _showSearchResults = true;
-      });
-      _animationController.forward();
-    } else {
-      setState(() {
-        _showSearchResults = false;
-      });
-      _animationController.reverse();
-    }
+    // Этот метод больше не нужен, так как мы используем onChanged в TextField
+    // Оставляем для совместимости
   }
 
   @override
@@ -103,42 +86,64 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               // Карта OpenStreetMap
               Consumer<MapProvider>(
                 builder: (context, mapProvider, child) {
-                  return OptimizedMapWidget(
-                    mapController: _mapController,
-                    markers: mapProvider.markers,
-                    polylines: mapProvider.polylines,
-                    onTap: (point) {
-                      setState(() {
-                        _showSearchResults = false;
-                        _searchController.clear();
-                      });
-                    },
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(0),
+                    child: FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: mapProvider.initialCameraPosition,
+                        initialZoom: 15.0,
+                        onTap: (tapPosition, point) {
+                          setState(() {
+                            _showSearchResults = false;
+                            _searchController.clear();
+                          });
+                        },
+                        interactionOptions: const InteractionOptions(
+                          flags: InteractiveFlag.all,
+                        ),
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.example.anal_gis',
+                          maxZoom: 19,
+                          backgroundColor: themeProvider.backgroundColor,
+                        ),
+                        MarkerLayer(
+                          markers: mapProvider.markers,
+                        ),
+                        PolylineLayer(
+                          polylines: mapProvider.polylines,
+                        ),
+                      ],
+                    ),
                   );
                 },
               ),
               
-              // Индикатор загрузки карты
-              Consumer<MapProvider>(
-                builder: (context, mapProvider, child) {
-                  if (mapProvider.isLoading && !mapProvider.isMapLoaded) {
-                    return Container(
-                      color: Colors.black54,
-                      child: const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(color: Colors.white),
-                            SizedBox(height: 16),
-                            Text(
-                              'Загрузка карты...',
-                              style: TextStyle(color: Colors.white, fontSize: 16),
-                            ),
-                          ],
-                        ),
+              // Индикатор загрузки карты (оптимизированный)
+              Selector<MapProvider, bool>(
+                selector: (context, provider) => provider.isLoading && !provider.isMapLoaded,
+                builder: (context, isLoading, child) {
+                  if (!isLoading) return const SizedBox.shrink();
+                  
+                  return Container(
+                    color: Colors.black54,
+                    child: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(color: Colors.white),
+                          SizedBox(height: 16),
+                          Text(
+                            'Загрузка карты...',
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                        ],
                       ),
-                    );
-                  }
-                  return const SizedBox.shrink();
+                    ),
+                  );
                 },
               ),
           
@@ -153,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           
               // Кнопка слоев (слева сверху)
               Positioned(
-                top: MediaQuery.of(context).padding.top + 10, // Поднято на 50px выше
+                top: MediaQuery.of(context).padding.top + 20, // Поднято выше, на уровень отступа
                 left: 16,
                 child: Container(
                   width: 48,
@@ -176,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           
               // Кнопки зума (справа, на той же высоте что и кнопка слоев)
               Positioned(
-                top: MediaQuery.of(context).padding.top + 10, // Поднято на 50px выше
+                top: MediaQuery.of(context).padding.top + 20, // Поднято выше, на уровень отступа
                 right: 16,
                 child: const MapControlsWidget(),
               ),
@@ -334,9 +339,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Text(
-                                          routeProvider.toLocation.isEmpty ? 'Куда?' : routeProvider.toLocation,
+                                          routeProvider.destinationName.isEmpty ? 'Куда?' : routeProvider.destinationName,
                                           style: TextStyle(
-                                            color: routeProvider.toLocation.isEmpty ? themeProvider.textSecondaryColor : themeProvider.textColor,
+                                            color: routeProvider.destinationName.isEmpty ? themeProvider.textSecondaryColor : themeProvider.textColor,
                                             fontSize: 16,
                                           ),
                                         ),
@@ -422,9 +427,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           border: InputBorder.none,
                                           contentPadding: EdgeInsets.zero,
                                         ),
+                                        onChanged: (value) {
+                                          if (value.isNotEmpty) {
+                                            context.read<SearchProvider>().search(value);
+                                            setState(() {
+                                              _showSearchResults = true;
+                                              _isBottomSheetExpanded = true; // Автоматически поднимаем панель
+                                            });
+                                          } else {
+                                            setState(() {
+                                              _showSearchResults = false;
+                                            });
+                                          }
+                                        },
                                         onTap: () {
                                           setState(() {
-                                            _isBottomSheetExpanded = true;
+                                            _isBottomSheetExpanded = true; // Поднимаем панель при нажатии
                                           });
                                         },
                                       ),
@@ -503,10 +521,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           
           // Если есть результаты поиска, показываем их вместо кнопок
           if (searchProvider.searchResults.isNotEmpty) {
-            return FadeTransition(
-              opacity: _fadeAnimation,
-              child: SearchResultsWidget(),
-            );
+            return SearchResultsWidget();
           }
           
           return SingleChildScrollView(
@@ -564,7 +579,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             child: ListView.builder(
                               scrollDirection: Axis.horizontal,
                               itemCount: ads.length,
-                              cacheExtent: 200, // Кэширование для плавной прокрутки
                               itemBuilder: (context, index) {
                                 final ad = ads[index];
                                 return Consumer<ThemeProvider>(
@@ -955,10 +969,6 @@ extension _HomeScreenStateMenu on _HomeScreenState {
                         context,
                         MaterialPageRoute(builder: (context) => const SettingsScreen()),
                       );
-                    }),
-                    _buildMenuItem(Icons.bookmark, 'Сохраненные места', () {
-                      Navigator.pop(context);
-                      // TODO: Navigate to saved places
                     }),
                   ],
                 ),

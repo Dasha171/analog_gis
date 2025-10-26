@@ -73,7 +73,7 @@ class _SideMenuScreenState extends State<SideMenuScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    'Пользователь',
+                    'Имя не указано',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,

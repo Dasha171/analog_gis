@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'screens/home_screen.dart';
 import 'providers/map_provider.dart';
 import 'providers/search_provider.dart';
@@ -15,9 +19,39 @@ import 'providers/user_actions_provider.dart';
 import 'providers/friends_provider.dart';
 import 'providers/admin_provider.dart';
 import 'providers/advertisement_provider.dart';
+import 'services/unified_database_service.dart';
+import 'services/cross_platform_sync_service.dart';
+import 'providers/organization_provider.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Инициализация databaseFactory для веб-версии
+  if (kIsWeb) {
+    databaseFactory = databaseFactoryFfiWeb;
+  }
+  
+  // Запускаем приложение сразу, а инициализацию делаем в фоне
   runApp(const AnalGisApp());
+  
+  // Инициализация в фоне (не блокирует UI)
+  _initializeAppInBackground();
+}
+
+Future<void> _initializeAppInBackground() async {
+  try {
+    print('🚀 Фоновая инициализация приложения...');
+    
+    // Мигрируем данные в единую систему
+    await UnifiedDatabaseService().migrateData();
+    
+    // Инициализируем синхронизацию между платформами
+    await CrossPlatformSyncService().initialize();
+    
+    print('✅ Фоновая инициализация завершена');
+  } catch (e) {
+    print('❌ Ошибка фоновой инициализации: $e');
+  }
 }
 
 class AnalGisApp extends StatelessWidget {
@@ -40,6 +74,7 @@ class AnalGisApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => FriendsProvider()),
         ChangeNotifierProvider(create: (_) => AdminProvider()),
         ChangeNotifierProvider(create: (_) => AdvertisementProvider()),
+        ChangeNotifierProvider(create: (_) => OrganizationProvider()),
       ],
       child: Consumer2<LocalizationProvider, ThemeProvider>(
         builder: (context, localizationProvider, themeProvider, child) {
@@ -60,6 +95,16 @@ class AnalGisApp extends StatelessWidget {
               GlobalCupertinoLocalizations.delegate,
             ],
             home: const HomeScreen(),
+            builder: (context, child) {
+              return MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  padding: kIsWeb 
+                    ? EdgeInsets.zero 
+                    : const EdgeInsets.only(top: 30.0), // Отступ сверху 30px для мобильных устройств
+                ),
+                child: child!,
+              );
+            },
           );
         },
       ),

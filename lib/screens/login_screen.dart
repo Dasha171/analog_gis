@@ -219,13 +219,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Кнопка входа через Google
                       OutlinedButton.icon(
                         onPressed: _isLoading ? null : _handleGoogleLogin,
-                        icon: Image.asset(
-                          'assets/icons/google.png',
-                          width: 20,
-                          height: 20,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Icon(Icons.g_mobiledata, color: themeProvider.textColor);
-                          },
+                        icon: Icon(
+                          Icons.g_mobiledata,
+                          color: themeProvider.textColor,
+                          size: 20,
                         ),
                         label: Text(
                           'Войти через Google',
@@ -317,7 +314,12 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.signInWithEmail(_emailController.text.trim());
+    final success = await authProvider.signInWithEmail(
+      _emailController.text.trim(),
+      firstName: _nameController.text.trim(),
+      lastName: '', // Пока не используем фамилию в логине
+      phone: '', // Пока не используем телефон в логине
+    );
 
     setState(() {
       _isLoading = false;

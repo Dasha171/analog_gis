@@ -58,18 +58,19 @@ dependencies:
   # Хранение данных
   shared_preferences: ^2.2.2
   sqflite: ^2.3.0
+  sqflite_common_ffi: ^2.3.0
+  sqflite_common_ffi_web: ^0.4.0
   path_provider: ^2.1.1
   
   # UI компоненты
   material_design_icons_flutter: ^7.0.7296
+  fl_chart: ^0.68.0
   
   # Изображения и ассеты
   cached_network_image: ^3.3.0
   
   # Аутентификация
   google_sign_in: ^6.2.1
-  firebase_auth: ^4.17.8
-  firebase_core: ^2.27.0
   crypto: ^3.0.3
   
   # Email отправка

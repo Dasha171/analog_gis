@@ -4,6 +4,11 @@ import '../providers/theme_provider.dart';
 import '../providers/admin_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/advertisement_provider.dart';
+import '../providers/organization_provider.dart';
+import '../models/organization_model.dart';
+import '../widgets/admin_charts_widget.dart';
+import '../utils/database_diagnostic.dart';
+import 'add_organization_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});
@@ -63,13 +68,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: themeProvider.backgroundColor,
-                        boxShadow: [
-                          BoxShadow(
-                            color: themeProvider.textColor.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
                       ),
                       child: Row(
                         children: [
@@ -87,12 +85,36 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                               ),
                             ),
                           ),
-                           IconButton(
-                             icon: Icon(Icons.refresh, color: themeProvider.textColor),
-                             onPressed: () {
-                               adminProvider.updateStats();
-                               adminProvider.refreshUsers();
-                             },
+                           Row(
+                             children: [
+                               IconButton(
+                                 icon: Icon(Icons.refresh, color: themeProvider.textColor),
+                                 onPressed: () {
+                                   adminProvider.updateStats();
+                                   adminProvider.refreshUsers();
+                                 },
+                               ),
+                               IconButton(
+                                 icon: Icon(Icons.bug_report, color: themeProvider.textColor),
+                                 onPressed: () async {
+                                   print('🔍 ПРИНУДИТЕЛЬНАЯ ДИАГНОСТИКА БАЗЫ ДАННЫХ:');
+                                   await DatabaseDiagnostic.printAllData();
+                                   
+                                   // Принудительно сохраняем всех пользователей
+                                   await adminProvider.forceSaveAllUsers();
+                                   
+                                   // Принудительно синхронизируем всех пользователей
+                                   await authProvider.forceSyncAllUsers();
+                                   
+                                   ScaffoldMessenger.of(context).showSnackBar(
+                                     const SnackBar(
+                                       content: Text('Диагностика, сохранение и синхронизация выполнены. Проверьте консоль.'),
+                                       duration: Duration(seconds: 3),
+                                     ),
+                                   );
+                                 },
+                               ),
+                             ],
                            ),
                         ],
                       ),
@@ -188,7 +210,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 crossAxisCount: crossAxisCount,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: isLargeScreen ? 3.5 : 2.8,
+                childAspectRatio: isLargeScreen ? 4.0 : 3.2,
                 children: [
                   _buildStatCard(themeProvider, 'Пользователи', '${adminProvider.appStats.totalUsers}', Icons.people, const Color(0xFF0C79FE)),
                   _buildStatCard(themeProvider, 'Активные', '${adminProvider.appStats.activeUsers}', Icons.person, Colors.green),
@@ -214,25 +236,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ),
           const SizedBox(height: 20),
           
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final crossAxisCount = constraints.maxWidth > 800 ? 2 : 1;
-              return GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.5,
-                children: [
-                  _buildChartCard(themeProvider, 'Активность пользователей', 'График активности за последние 30 дней', Icons.trending_up),
-                  _buildChartCard(themeProvider, 'Популярные места', 'Топ-10 самых посещаемых мест', Icons.location_on),
-                  _buildChartCard(themeProvider, 'География пользователей', 'Распределение пользователей по регионам', Icons.public),
-                  _buildChartCard(themeProvider, 'Конверсия', 'Статистика конверсии и удержания', Icons.analytics),
-                ],
-              );
-            },
-          ),
+          // Графики и аналитика
+          const AdminChartsWidget(),
         ],
       ),
     );
@@ -247,15 +252,46 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           child: Row(
             children: [
               Expanded(
-                child: Text(
-                  'Пользователи (${adminProvider.users.length})',
-                  style: TextStyle(
-                    color: themeProvider.textColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Пользователи (${adminProvider.users.length})',
+                      style: TextStyle(
+                        color: themeProvider.textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Debug: ${adminProvider.users.length} пользователей загружено',
+                      style: TextStyle(
+                        color: themeProvider.textSecondaryColor,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  await DatabaseDiagnostic.printAllData();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Диагностика выполнена, проверьте консоль')),
+                  );
+                },
+                icon: const Icon(Icons.bug_report, size: 18),
+                label: const Text('Диагностика'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: () => _showAddUserDialog(context, themeProvider, adminProvider),
                 icon: const Icon(Icons.person_add, size: 18),
@@ -275,59 +311,361 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         
         // Список пользователей
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: adminProvider.users.length,
-            itemBuilder: (context, index) {
-              final user = adminProvider.users[index];
-              return _buildUserItem(context, themeProvider, adminProvider, adProvider, user);
-            },
-          ),
+          child: adminProvider.users.isEmpty 
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.person_off,
+                      size: 64,
+                      color: themeProvider.textSecondaryColor,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Нет пользователей',
+                      style: TextStyle(
+                        color: themeProvider.textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Загружено: ${adminProvider.users.length}',
+                      style: TextStyle(
+                        color: themeProvider.textSecondaryColor,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: adminProvider.users.length,
+                itemBuilder: (context, index) {
+                  final user = adminProvider.users[index];
+                  print('🔍 Отображаем пользователя $index: ${user.name} (${user.email})');
+                  return _buildUserItem(context, themeProvider, adminProvider, adProvider, user);
+                },
+              ),
         ),
       ],
     );
   }
 
   Widget _buildOrganizationsTab(BuildContext context, ThemeProvider themeProvider, AdminProvider adminProvider, AdvertisementProvider adProvider) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: const Color(0xFF0C79FE).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(60),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // Заголовок с кнопкой добавления
+          Row(
+            children: [
+              Text(
+                'Организации',
+                style: TextStyle(
+                  color: themeProvider.textColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              child: const Icon(
-                Icons.business,
-                color: Color(0xFF0C79FE),
-                size: 60,
+              const Spacer(),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AddOrganizationScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Добавить'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0C79FE),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Список организаций
+          Expanded(
+            child: Consumer<OrganizationProvider>(
+              builder: (context, organizationProvider, child) {
+                if (organizationProvider.isLoading) {
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: const Color(0xFF0C79FE),
+                    ),
+                  );
+                }
+                
+                if (organizationProvider.organizations.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.business_outlined,
+                          size: 64,
+                          color: themeProvider.textSecondaryColor,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Нет организаций',
+                          style: TextStyle(
+                            color: themeProvider.textColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Добавьте первую организацию',
+                          style: TextStyle(
+                            color: themeProvider.textSecondaryColor,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                
+                return ListView.builder(
+                  itemCount: organizationProvider.organizations.length,
+                  itemBuilder: (context, index) {
+                    final organization = organizationProvider.organizations[index];
+                    return _buildOrganizationCard(organization, themeProvider, organizationProvider);
+                  },
+                );
+              },
             ),
-            const SizedBox(height: 32),
-            Text(
-              'Управление организациями',
-              style: TextStyle(
-                color: themeProvider.textColor,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrganizationCard(Organization organization, ThemeProvider themeProvider, OrganizationProvider organizationProvider) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: themeProvider.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: themeProvider.textSecondaryColor.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0C79FE).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.business,
+                  color: const Color(0xFF0C79FE),
+                  size: 20,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      organization.name,
+                      style: TextStyle(
+                        color: themeProvider.textColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      organization.category,
+                      style: TextStyle(
+                        color: themeProvider.textSecondaryColor,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, color: themeProvider.textSecondaryColor),
+                onSelected: (value) {
+                  switch (value) {
+                    case 'edit':
+                      // TODO: Редактировать организацию
+                      break;
+                    case 'delete':
+                      _showDeleteOrganizationDialog(organization, themeProvider, organizationProvider);
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, color: themeProvider.textColor, size: 18),
+                        const SizedBox(width: 8),
+                        Text('Редактировать', style: TextStyle(color: themeProvider.textColor)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, color: Colors.red, size: 18),
+                        const SizedBox(width: 8),
+                        Text('Удалить', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (organization.description.isNotEmpty) ...[
             Text(
-              'Здесь будет управление организациями, модерация отзывов и управление контентом',
+              organization.description,
               style: TextStyle(
                 color: themeProvider.textSecondaryColor,
-                fontSize: 16,
+                fontSize: 14,
               ),
-              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
+            const SizedBox(height: 8),
           ],
+          Row(
+            children: [
+              Icon(Icons.location_on, size: 16, color: themeProvider.textSecondaryColor),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  organization.address,
+                  style: TextStyle(
+                    color: themeProvider.textSecondaryColor,
+                    fontSize: 12,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: organization.isActive ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  organization.isActive ? 'Активна' : 'Неактивна',
+                  style: TextStyle(
+                    color: organization.isActive ? Colors.green : Colors.red,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: organization.isVerified ? Colors.blue.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  organization.isVerified ? 'Проверена' : 'На проверке',
+                  style: TextStyle(
+                    color: organization.isVerified ? Colors.blue : Colors.orange,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteOrganizationDialog(Organization organization, ThemeProvider themeProvider, OrganizationProvider organizationProvider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: themeProvider.cardColor,
+        title: Text(
+          'Удалить организацию',
+          style: TextStyle(color: themeProvider.textColor),
         ),
+        content: Text(
+          'Вы уверены, что хотите удалить организацию "${organization.name}"?',
+          style: TextStyle(color: themeProvider.textSecondaryColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Отмена',
+              style: TextStyle(color: themeProvider.textSecondaryColor),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await organizationProvider.deleteOrganization(organization.id);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Организация удалена'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Ошибка: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Удалить'),
+          ),
+        ],
       ),
     );
   }
@@ -382,7 +720,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   Widget _buildStatCard(ThemeProvider themeProvider, String title, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: themeProvider.cardColor,
         borderRadius: BorderRadius.circular(12),
@@ -390,38 +728,42 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               icon,
               color: color,
-              size: 24,
+              size: 20,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   value,
                   style: TextStyle(
                     color: themeProvider.textColor,
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: themeProvider.textSecondaryColor,
-                    fontSize: 12,
+                Flexible(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: themeProvider.textSecondaryColor,
+                      fontSize: 11,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

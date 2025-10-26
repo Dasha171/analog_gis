@@ -25,13 +25,6 @@ class FriendsScreen extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: themeProvider.backgroundColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: themeProvider.textColor.withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
                 child: Row(
                   children: [
@@ -314,9 +307,9 @@ class FriendsScreen extends StatelessWidget {
             children: [
               if (friend.latitude != null && friend.longitude != null)
                 IconButton(
-                  icon: const Icon(Icons.location_on, color: Color(0xFF0C79FE)),
+                  icon: const Icon(Icons.map, color: Color(0xFF0C79FE)),
                   onPressed: () {
-                    // TODO: Показать местоположение на карте
+                    _showFriendOnMap(context, friend);
                   },
                 ),
               IconButton(
@@ -463,6 +456,20 @@ class FriendsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showFriendOnMap(BuildContext context, dynamic friend) {
+    Navigator.pushNamed(
+      context,
+      '/map',
+      arguments: {
+        'showFriend': true,
+        'friendId': friend.friendId,
+        'friendName': friend.name,
+        'latitude': friend.latitude,
+        'longitude': friend.longitude,
+      },
     );
   }
 

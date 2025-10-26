@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart' as latlng;
 import '../models/search_result_model.dart';
+import '../models/organization_model.dart';
+import '../services/database_service.dart';
 
 class SearchProvider extends ChangeNotifier {
   List<SearchResult> _searchResults = [];
   bool _isSearching = false;
   String _currentQuery = '';
   List<SearchResult> _selectedResults = [];
+  final DatabaseService _databaseService = DatabaseService();
 
   // Getters
   List<SearchResult> get searchResults => _searchResults;
@@ -140,17 +143,41 @@ class SearchProvider extends ChangeNotifier {
     _currentQuery = query;
     notifyListeners();
 
-    // Simulate API delay
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    // Filter mock data based on query
-    _searchResults = _mockData.where((result) {
+    try {
+      // Ищем в реальных организациях из базы данных
+      final organizations = await _databaseService.getAllOrganizations();
       final searchText = query.toLowerCase();
-      return result.name.toLowerCase().contains(searchText) ||
-             result.address.toLowerCase().contains(searchText) ||
-             result.category.toLowerCase().contains(searchText) ||
-             result.description?.toLowerCase().contains(searchText) == true;
-    }).toList();
+      
+      final orgResults = organizations.where((org) {
+        return org.name.toLowerCase().contains(searchText) ||
+               org.address.toLowerCase().contains(searchText) ||
+               org.category.toLowerCase().contains(searchText) ||
+               org.description.toLowerCase().contains(searchText);
+      }).map((org) => SearchResult(
+        id: org.id,
+        name: org.name,
+        address: org.address,
+        category: org.category,
+        position: latlng.LatLng(org.latitude, org.longitude),
+        rating: org.rating,
+        reviewCount: org.reviewCount,
+        phone: org.phone,
+        description: org.description,
+      )).toList();
+
+      // Добавляем результаты из мок-данных для тестирования
+      final mockResults = _mockData.where((result) {
+        return result.name.toLowerCase().contains(searchText) ||
+               result.address.toLowerCase().contains(searchText) ||
+               result.category.toLowerCase().contains(searchText) ||
+               result.description?.toLowerCase().contains(searchText) == true;
+      }).toList();
+
+      _searchResults = [...orgResults, ...mockResults];
+    } catch (e) {
+      print('Ошибка поиска: $e');
+      _searchResults = [];
+    }
 
     _isSearching = false;
     notifyListeners();

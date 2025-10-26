@@ -300,6 +300,9 @@ class _VerificationScreenState extends State<VerificationScreen> {
   Future<void> _handleVerification() async {
     final code = _controllers.map((controller) => controller.text).join();
     
+    print('🔍 ПОЛЬЗОВАТЕЛЬ ВВОДИТ КОД: $code для ${widget.email}');
+    print('🔍 isLogin: ${widget.isLogin}');
+    
     if (code.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -319,13 +322,18 @@ class _VerificationScreenState extends State<VerificationScreen> {
         ? await authProvider.signInWithCode(widget.email, code)
         : await authProvider.verifyEmailCode(code);
 
+    print('🔍 РЕЗУЛЬТАТ ВЕРИФИКАЦИИ: $success');
+
     setState(() {
       _isLoading = false;
     });
 
     if (success) {
+      print('🔍 ВЕРИФИКАЦИЯ УСПЕШНА, ПЕРЕХОДИМ НА ГЛАВНУЮ');
       // Закрываем все экраны авторизации и переходим на главную страницу
       Navigator.of(context).popUntil((route) => route.isFirst);
+    } else {
+      print('🔍 ВЕРИФИКАЦИЯ НЕУДАЧНА: ${authProvider.errorMessage}');
     }
   }
 

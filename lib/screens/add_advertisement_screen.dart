@@ -15,6 +15,7 @@ class AddAdvertisementScreen extends StatefulWidget {
 class _AddAdvertisementScreenState extends State<AddAdvertisementScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
   final _linkController = TextEditingController();
   String _selectedCityId = '';
   String _imageUrl = '';
@@ -23,6 +24,7 @@ class _AddAdvertisementScreenState extends State<AddAdvertisementScreen> {
   @override
   void dispose() {
     _titleController.dispose();
+    _descriptionController.dispose();
     _linkController.dispose();
     super.dispose();
   }
@@ -437,6 +439,7 @@ class _AddAdvertisementScreenState extends State<AddAdvertisementScreen> {
 
     final success = await adProvider.addAdvertisement(
       title: _titleController.text.trim(),
+      description: _descriptionController.text.trim(),
       imageUrl: _imageUrl.trim(),
       linkUrl: _linkController.text.trim(),
       cityId: _selectedCityId,
